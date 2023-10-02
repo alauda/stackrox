@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -431,10 +430,12 @@ func (m *networkFlowManager) enrichConnection(conn *connection, status *connStat
 	}
 
 	var lookupResults []clusterentities.LookupResult
+	var isInternet = false
 
 	// Check if the remote address represents the de-facto INTERNET entity.
 	if conn.remote.IPAndPort.Address == externalIPv4Addr || conn.remote.IPAndPort.Address == externalIPv6Addr {
 		isFresh = false
+		isInternet = true
 	} else {
 		// Otherwise, check if the remote entity is actually a cluster entity.
 		lookupResults = m.clusterEntities.LookupByEndpoint(conn.remote)
@@ -468,21 +469,21 @@ func (m *networkFlowManager) enrichConnection(conn *connection, status *connStat
 		}
 
 		if extSrc == nil {
-			// Fake a lookup result. This shows "External Entities" in the network graph
-			lookupResults = []clusterentities.LookupResult{
-				{
-					Entity:         networkgraph.InternetEntity(),
-					ContainerPorts: []uint16{port},
-				},
-			}
-			if conn.incoming {
-				log.Debugf("Incoming connection to container %s/%s from %s:%s. "+
-					"Marking it as 'External Entities' in the network graph.",
-					container.Namespace, container.ContainerName, conn.remote.IPAndPort.String(), strconv.Itoa(int(port)))
+			if isInternet {
+				lookupResults = []clusterentities.LookupResult{
+					{
+						Entity:         networkgraph.InternetEntity(),
+						ContainerPorts: []uint16{port},
+					},
+				}
 			} else {
-				log.Debugf("Outgoing connection from container %s/%s to %s. "+
-					"Marking it as 'External Entities' in the network graph.",
-					container.Namespace, container.ContainerName, conn.remote.IPAndPort.String())
+				log.Debugf("Unknown entity: %s", conn.remote.IPAndPort.String())
+				lookupResults = []clusterentities.LookupResult{
+					{
+						Entity:         networkgraph.ExternalEntity(conn.remote.IPAndPort.String()),
+						ContainerPorts: []uint16{port},
+					},
+				}
 			}
 		} else {
 			lookupResults = []clusterentities.LookupResult{
