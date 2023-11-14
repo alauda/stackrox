@@ -353,13 +353,15 @@ deploy_optional_e2e_components() {
 
     if [[ "${INSTALL_COMPLIANCE_OPERATOR:-false}" == "true" ]]; then
         install_the_compliance_operator
+    elif [[ "${INSTALL_COMPLIANCE_OPERATOR_FROM_SOURCE:-false}" == "true" ]]; then
+        install_the_compliance_operator_from_source
     else
         info "Skipping the compliance operator install"
     fi
 }
 
 install_the_compliance_operator() {
-    info "Installing the compliance operator"
+    info "Installing the compliance operator from subscription"
 
     # ref: https://docs.openshift.com/container-platform/4.13/security/compliance_operator/compliance-operator-installation.html
 
@@ -370,6 +372,15 @@ install_the_compliance_operator() {
     wait_for_object_to_appear openshift-compliance deploy/compliance-operator
 
     oc get csv -n openshift-compliance
+}
+
+install_the_compliance_operator_from_source() {
+    info "Installing the compliance operator from source"
+    install_dir=$(mktemp -d)
+    git clone git@github.com:ComplianceAsCode/compliance-operator.git "$install_dir"
+    pushd "$install_dir"
+    make deploy-local
+    popd
 }
 
 setup_client_CA_auth_provider() {
