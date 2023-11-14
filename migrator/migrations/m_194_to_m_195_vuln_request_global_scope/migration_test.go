@@ -28,7 +28,8 @@ type migrationTestSuite struct {
 }
 
 func TestMigration(t *testing.T) {
-	suite.Run(t, new(migrationTestSuite))
+	// Temporarily disable test because migration was turned off
+	//suite.Run(t, new(migrationTestSuite))
 }
 
 func (s *migrationTestSuite) SetupSuite() {
