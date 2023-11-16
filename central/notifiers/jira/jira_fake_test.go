@@ -26,6 +26,7 @@ import (
 // This is in no way intended to be a realistic model of the JIRA API, it only allows us to exercise notifier code paths
 // in this test.
 type fakeJira struct {
+	cloud                     bool
 	t                         *testing.T
 	username, password, token string
 
@@ -77,10 +78,17 @@ func (j *fakeJira) handleCreateMeta(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
 	issueTypes := &issueTypeResult{
-		Total:      len(j.project.IssueTypes),
-		IssueTypes: j.project.IssueTypes,
+		Total: len(j.project.IssueTypes),
 	}
+
+	if j.cloud {
+		issueTypes.IssueTypesCloud = j.project.IssueTypes
+	} else {
+		issueTypes.IssueTypes = j.project.IssueTypes
+	}
+
 	require.NoError(j.t, json.NewEncoder(w).Encode(&issueTypes))
 }
 
@@ -103,6 +111,14 @@ func (j *fakeJira) handleCreateIssue(w http.ResponseWriter, req *http.Request) {
 }
 
 func TestWithFakeJira(t *testing.T) {
+	testWithFakeJira(t, false)
+}
+
+func TestWithFakeJiraCloud(t *testing.T) {
+	testWithFakeJira(t, true)
+}
+
+func testWithFakeJira(t *testing.T, cloud bool) {
 	const (
 		username = "fakejirauser"
 		password = "fakejirapassword"
@@ -151,6 +167,7 @@ func TestWithFakeJira(t *testing.T) {
 	}
 
 	fj := fakeJira{
+		cloud:      cloud,
 		t:          t,
 		username:   username,
 		password:   password,
