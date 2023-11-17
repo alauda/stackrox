@@ -309,6 +309,7 @@ func (c *cachedStore[T, PT]) GetAll(ctx context.Context) ([]PT, error) {
 }
 
 func (c *cachedStore[T, PT]) walkCacheNoLock(ctx context.Context, fn func(obj PT) error) error {
+	log.Info("Walking Cache")
 	for _, obj := range c.cache {
 		if !c.isReadAllowed(ctx, obj) {
 			continue
@@ -364,6 +365,7 @@ func (c *cachedStore[T, PT]) isActionAllowed(ctx context.Context, action storage
 			scopeChecker = scopeChecker.ForClusterScopedObject(data)
 		}
 	}
+	log.Infof("IsReadAllowed for %s: %t", c.pkGetter(obj), scopeChecker.IsAllowed())
 	return scopeChecker.IsAllowed()
 }
 
