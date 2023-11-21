@@ -29,7 +29,7 @@ type Entity struct {
 	ID   string
 
 	// TODO this does not belong here
-	ExternalEntityName string
+	ExternalEntityAddress net.IPAddress
 }
 
 // ToProto converts the Entity struct to a storage.NetworkEntityInfo proto.
@@ -40,7 +40,11 @@ func (e Entity) ToProto() *storage.NetworkEntityInfo {
 			Id:   e.ID,
 			Desc: &storage.NetworkEntityInfo_ExternalSource_{
 				ExternalSource: &storage.NetworkEntityInfo_ExternalSource{
-					Name: e.ExternalEntityName,
+					Default: false,
+					Learned: true,
+					Source: &storage.NetworkEntityInfo_ExternalSource_Cidr{
+						Cidr: e.ExternalEntityAddress.String(),
+					},
 				},
 			},
 		}
@@ -53,6 +57,9 @@ func (e Entity) ToProto() *storage.NetworkEntityInfo {
 
 // EntityFromProto converts a storage.NetworkEntityInfo proto to an Entity struct.
 func EntityFromProto(protoEnt *storage.NetworkEntityInfo) Entity {
+	if protoEnt.Type == storage.NetworkEntityInfo_EXTERNAL_SOURCE && protoEnt.GetExternalSource() != nil {
+		return LearnedExternalEntity(net.IPNetworkFromCIDR(protoEnt.GetExternalSource().GetCidr()).IP())
+	}
 	return Entity{
 		Type: protoEnt.GetType(),
 		ID:   protoEnt.GetId(),
@@ -75,10 +82,11 @@ func InternetEntity() Entity {
 	}
 }
 
-func ExternalEntity(name string) Entity {
+func LearnedExternalEntity(address net.IPAddress) Entity {
 	return Entity{
-		Type:               storage.NetworkEntityInfo_EXTERNAL_SOURCE,
-		ExternalEntityName: name,
+		Type:                  storage.NetworkEntityInfo_EXTERNAL_SOURCE,
+		ID:                    InternetExternalSourceID,
+		ExternalEntityAddress: address,
 	}
 }
 
