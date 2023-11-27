@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 	"crypto/sha512"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -83,7 +84,23 @@ func NewIndexer(ctx context.Context, cfg config.IndexerConfig) (Indexer, error) 
 		ScanLockRetry:        libindex.DefaultScanLockRetry,
 		LayerScanConcurrency: libindex.DefaultLayerScanConcurrency,
 	}
-
+	// In config yaml file:
+	//repo:
+	//	rhel-repository-scanner:
+	//repo2cpe_mapping_url: needs to be sensor definitions endpoint
+	//	package:
+	//rhel_containerscanner:
+	//name2repos_mapping_file: /config/container-name-repos-map.json
+	for name, node := range cfg.Repo {
+		node := node
+		opts.ScannerConfig.Repo[name] = func(v interface{}) error {
+			b, err := json.Marshal(node)
+			if err != nil {
+				return err
+			}
+			return json.Unmarshal(b, v)
+		}
+	}
 	indexer, err := libindex.New(ctx, &opts, c)
 	if err != nil {
 		return nil, fmt.Errorf("creating libindex: %w", err)

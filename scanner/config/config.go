@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/stackrox/rox/pkg/utils"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -80,7 +79,8 @@ type IndexerConfig struct {
 	// Enable if false disables the Indexer service.
 	Enable bool `yaml:"enable"`
 	// GetLayerTimeout timeout duration of GET requests for layers
-	GetLayerTimeout Duration `yaml:"get_layer_timeout"`
+	GetLayerTimeout Duration               `yaml:"get_layer_timeout"`
+	Repo            map[string]interface{} `yaml:"repo,omitempty" json:"repo,omitempty"`
 }
 
 func (c *IndexerConfig) validate() error {
