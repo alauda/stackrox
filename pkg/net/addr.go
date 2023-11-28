@@ -331,3 +331,11 @@ func IPNetworkFromCIDRBytes(cidr []byte) IPNetwork {
 		Mask: net.CIDRMask(int(cidr[n-1]), (n-1)*8),
 	})
 }
+
+// IPNetworkFromAddress converts an IP address into an IP network referencing exactly this address
+func IPNetworkFromAddress(ipAddress IPAddress) IPNetwork {
+	return IPNetwork{
+		ip:        ipAddress,
+		prefixLen: byte(ipAddress.Family().Bits()),
+	}
+}
