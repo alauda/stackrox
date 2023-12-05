@@ -63,7 +63,7 @@ func (t *ClientTestSuite) SetupSuite() {
 
 	cwd, err := os.Getwd()
 	t.Require().NoError(err)
-	t.T().Setenv(mtls.CAFileEnvName, filepath.Join(cwd, "testdata", "central-ca.pem"))
+	t.T().Setenv(mtls.CAFileEnvName, filepath.Join(cwd, "testdata", "central", "ca.pem"))
 
 	// Generate a client certificate (this does not need to be related to the central CA from testdata).
 	ca, err := certgen.GenerateCA()
