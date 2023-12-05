@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 
@@ -11,13 +12,12 @@ import (
 	"github.com/stackrox/rox/pkg/jsonutil"
 	"github.com/stackrox/rox/pkg/mtls"
 	"github.com/stackrox/rox/pkg/utils"
-	"github.com/stackrox/rox/roxctl/common/environment"
 )
 
 func main() {
 	// Check if a command-line argument is provided
 	if len(os.Args) < 3 {
-		environment.CLIEnvironment().Logger().ErrfLn("Usage: go run main.go <challenge_token> <path_to_test_dir>")
+		fmt.Println("Usage: go run main.go <protobuf_data>") //nolint:forbidigo
 		os.Exit(1)
 	}
 
@@ -34,18 +34,15 @@ func main() {
 		ChallengeToken: challengeToken,
 	})
 	if err != nil {
-		environment.CLIEnvironment().Logger().ErrfLn("Failed executing TLSChallenge: %v", err)
+		fmt.Printf("Failed executing TLSChallenge: %v\n", err) //nolint:forbidigo
 		os.Exit(1)
 	}
 
 	result, err := jsonutil.ProtoToJSON(message)
 	if err != nil {
-		environment.CLIEnvironment().Logger().ErrfLn("Error unmarshalling Protobuf data: %v", err)
+		fmt.Printf("Error unmarshalling Protobuf data: %v\n", err) //nolint:forbidigo
 		os.Exit(1)
 	}
 
-	if _, err := environment.CLIEnvironment().InputOutput().Out().Write([]byte(result)); err != nil {
-		environment.CLIEnvironment().Logger().ErrfLn("Error unmarshalling Protobuf data: %v", err)
-		os.Exit(1)
-	}
+	fmt.Printf("%+v\n", result) //nolint:forbidigo
 }
