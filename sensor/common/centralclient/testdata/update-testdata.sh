@@ -67,28 +67,23 @@ exec_tls_challenge() {
 openssl genrsa -out "$SCRIPT_DIR"/myCA.key 2048
 openssl req -x509 -new -nodes -key "$SCRIPT_DIR"/myCA.key -sha256 -out "$SCRIPT_DIR"/myCA.pem -days 100000 -subj '/CN=Root LoadBalancer Certificate Authority'
 
-# Read and replace additional CA in kubernetes manifest.
+ Read and replace additional CA in kubernetes manifest.
 additionalCA=$(cat "$SCRIPT_DIR"/myCA.pem)
-yq e -i '.stringData.["lb_ca.crt"] = "'"$additionalCA"'"' "$SCRIPT_DIR"/additional-ca.yaml
+yq e -i '.stringData.["lb_ca.crt"] = "'"$additionalCA"'"' "$SCRIPT_DIR/additional-ca.yaml"
 
 # Receive new StackRox CA certificate from currently running instance. Save it as testdata to be used in the test case.
 kubectl -n stackrox get secret central-tls -o json | jq -r '.data["ca.pem"]' | base64 --decode > "$SCRIPT_DIR"/central-ca.pem
 
 # Apply additional-ca
-kubectl -n stackrox apply -f additional-ca.yaml
+kubectl -n stackrox apply -f "$SCRIPT_DIR/additional-ca.yaml"
 
 # retry tls challenge until additional ca was loaded and returned by Central. This is caused by a delay until
 # the updated secret is mounted in Central.
 retry 10 5 exec_tls_challenge
 
-# read trustInfoResponse from global variable, escape special characters for sed and replace the example variables in the
-# corresponding Go file.
-trustInfoSerialized=$(echo "$trustInfoResponse" | jq ".trustInfoSerialized" -r) > trust_info_serialied
-#sed -i -E 's/trustInfoExample = ".+"/trustInfoExample = "'"$trustInfoSerialized"'"/g' "$SCRIPT_DIR/../client_test.go"
-
-# Update signature example constant.
-signature=$(echo "$trustInfoResponse" | jq .signature -r) > signature
-#sed -i -E 's/signatureExample = ".+"/signatureExample = "'"$signature"'"/g' "$SCRIPT_DIR/../client_test.go"
+# Update signature and trustInfoSerialized example file
+echo "$trustInfoResponse" | jq ".trustInfoSerialized" -r > "$SCRIPT_DIR/trust_info_serialized.example"
+echo "$trustInfoResponse" | jq .signature -r > "$SCRIPT_DIR/signature.example"
 
 echo "Run go unit tests..."
-go test ./../
+go test "$SCRIPT_DIR"/../
