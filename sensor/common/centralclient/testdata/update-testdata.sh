@@ -22,18 +22,17 @@ retry() {
     local func=$3
     local retry_count=0
 
-    while [ $retry_count -lt $max_retries ]; do
+    while [ $retry_count -lt "$max_retries" ]; do
         echo "Attempt $((retry_count + 1))"
-        $func  # Execute the provided function
 
-        # Check the exit status of the function
-        if [ $? -eq 0 ]; then
+        # Execute and check the exit status of the function
+        if $func; then
             echo "Function succeeded."
             return 0
         else
             ((retry_count++))
             echo "Function failed. Retrying in $delay seconds..."
-            sleep $delay
+            sleep "$delay"
         fi
     done
 
@@ -48,14 +47,14 @@ exec_tls_challenge() {
     # Check additional-ca is present in response
     additionalCAInResponse=$(go run "$SCRIPT_DIR/unmarshal.go" "$trustInfoResponse")
 
-    CASerialNumberResponse=$(echo $additionalCAInResponse | jq -r .additionalCas[0] | base64 --decode | openssl x509 -noout -serial)
-    CASerialNumberLocal=$(cat "$SCRIPT_DIR/myCA.pem" | openssl x509 -noout -serial)
+    CASerialNumberResponse=$(echo "$additionalCAInResponse" | jq -r .additionalCas[0] | base64 --decode | openssl x509 -noout -serial)
+    CASerialNumberLocal=$(openssl x509 -noout -serial < "$SCRIPT_DIR/myCA.pem")
 
 
     if [[ "$CASerialNumberResponse" != "$CASerialNumberLocal" ]]; then
         echo "Serial Numbers of additional CA did not matched. Waiting until Central loaded new CA cert..."
-        echo "Local additional CA": $CASerialNumberLocal
-        echo "Central additional CA": $CASerialNumberResponse
+        echo "Local additional CA: $CASerialNumberLocal"
+        echo "Central additional CA: $CASerialNumberResponse"
         return 1
     fi
     echo "Loaded additional CA successfully."
@@ -82,12 +81,11 @@ retry 10 5 exec_tls_challenge
 
 # read trustInfoResponse from global variable, escape special characters for sed and replace the example variables in the
 # corresponding Go file.
-trustInfoSerialized=$(echo $trustInfoResponse | jq ".trustInfoSerialized" -r | sed 's/[]\/$*.^[]/\\&/g')
-echo $trustInfoSerialized
+trustInfoSerialized=$(echo "$trustInfoResponse" | jq ".trustInfoSerialized" -r | sed 's/[]\/$*.^[]/\\&/g')
 sed -i -E 's/trustInfoExample = ".+"/trustInfoExample = "'"$trustInfoSerialized"'"/g' "$SCRIPT_DIR/../client_test.go"
 
 # Update signature example constant.
-signature=$(echo $trustInfoResponse | jq .signature -r | sed 's/[]\/$*.^[]/\\&/g')
+signature=$(echo "$trustInfoResponse" | jq .signature -r | sed 's/[]\/$*.^[]/\\&/g')
 sed -i -E 's/signatureExample = ".+"/signatureExample = "'"$signature"'"/g' "$SCRIPT_DIR/../client_test.go"
 
 echo "Run go unit tests..."
