@@ -5,9 +5,10 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Usage: ./update-testdata.sh
 #
 # Prerequisites:
-# - roxcurl
-# - deployed StackRox instance via ./deploy/k8s/deploy-local.sh
+# - roxcurl (can be found in https://github.com/stackrox/workflow)
+# - StackRox central instance deployed to `stackrox` namespace, e.g. via ./deploy/k8s/deploy-local.sh
 # - jq
+# - yq
 # - openssl
 
 if ! kubectl -n stackrox get secrets central-tls; then
@@ -23,14 +24,14 @@ retry() {
     local retry_count=0
 
     while [ $retry_count -lt "$max_retries" ]; do
-        echo "Attempt $((retry_count + 1))"
+        ((retry_count++))
+        echo "Attempt $retry_count"
 
         # Execute and check the exit status of the function
         if $func; then
             echo "Function succeeded."
             return 0
         else
-            ((retry_count++))
             echo "Function failed. Retrying in $delay seconds..."
             sleep "$delay"
         fi
@@ -42,6 +43,7 @@ retry() {
 
 trustInfoResponse=""
 exec_tls_challenge() {
+    # The token is a random cryptographically generated number. Generation is done in sensor/common/centralclient/client.go:generateChallengeToken
     trustInfoResponse=$(roxcurl "/v1/tls-challenge?challengeToken=h83_PGhSqS8OAvplb8asYMfPHy1JhVVMKcajYyKmrIU=")
 
     # Check additional-ca is present in response
@@ -69,7 +71,7 @@ openssl req -x509 -new -nodes -key "$SCRIPT_DIR"/myCA.key -sha256 -out "$SCRIPT_
 additionalCA=$(cat "$SCRIPT_DIR"/myCA.pem)
 yq e -i '.stringData.["lb_ca.crt"] = "'"$additionalCA"'"' "$SCRIPT_DIR"/additional-ca.yaml
 
-# Receive new StackRox CA certificate from currently running instance. Safe it as testdata to be used in the test case.
+# Receive new StackRox CA certificate from currently running instance. Save it as testdata to be used in the test case.
 kubectl -n stackrox get secret central-tls -o json | jq -r '.data["ca.pem"]' | base64 --decode > "$SCRIPT_DIR"/central-ca.pem
 
 # Apply additional-ca
@@ -81,12 +83,12 @@ retry 10 5 exec_tls_challenge
 
 # read trustInfoResponse from global variable, escape special characters for sed and replace the example variables in the
 # corresponding Go file.
-trustInfoSerialized=$(echo "$trustInfoResponse" | jq ".trustInfoSerialized" -r | sed 's/[]\/$*.^[]/\\&/g')
-sed -i -E 's/trustInfoExample = ".+"/trustInfoExample = "'"$trustInfoSerialized"'"/g' "$SCRIPT_DIR/../client_test.go"
+trustInfoSerialized=$(echo "$trustInfoResponse" | jq ".trustInfoSerialized" -r) > trust_info_serialied
+#sed -i -E 's/trustInfoExample = ".+"/trustInfoExample = "'"$trustInfoSerialized"'"/g' "$SCRIPT_DIR/../client_test.go"
 
 # Update signature example constant.
-signature=$(echo "$trustInfoResponse" | jq .signature -r | sed 's/[]\/$*.^[]/\\&/g')
-sed -i -E 's/signatureExample = ".+"/signatureExample = "'"$signature"'"/g' "$SCRIPT_DIR/../client_test.go"
+signature=$(echo "$trustInfoResponse" | jq .signature -r) > signature
+#sed -i -E 's/signatureExample = ".+"/signatureExample = "'"$signature"'"/g' "$SCRIPT_DIR/../client_test.go"
 
 echo "Run go unit tests..."
 go test ./../
