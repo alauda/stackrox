@@ -6,7 +6,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 #
 # Prerequisites:
 # - roxcurl
-# - deployed StackRox instance
+# - deployed StackRox instance via ./deploy/k8s/deploy-local.sh
 # - jq
 # - openssl
 
