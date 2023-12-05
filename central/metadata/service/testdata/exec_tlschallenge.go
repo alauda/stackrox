@@ -14,20 +14,22 @@ import (
 	"github.com/stackrox/rox/pkg/utils"
 )
 
+// Usage: go run exec_tlschallenge.go <challenge_token> <central_certs_path> <additional_ca_path>
 func main() {
 	// Check if a command-line argument is provided
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: go run main.go <protobuf_data>") //nolint:forbidigo
+	if len(os.Args) < 4 {
+		fmt.Println("Usage: go run main.go <challenge_token> <central_certs_path> <additional_ca_path>") //nolint:forbidigo
 		os.Exit(1)
 	}
 
 	challengeToken := os.Args[1]
-	basePath := os.Args[2]
+	certPath := os.Args[2]
+	additionalCAPath := os.Args[3]
 
-	utils.Should(os.Setenv(mtls.CAFileEnvName, path.Join(basePath, "central/ca.pem")))
-	utils.Should(os.Setenv(tlsconfig.MTLSAdditionalCADirEnvName, path.Join(basePath, "additionalCAs/")))
-	utils.Should(os.Setenv(mtls.CertFilePathEnvName, path.Join(basePath, "central/cert.pem")))
-	utils.Should(os.Setenv(mtls.KeyFileEnvName, path.Join(basePath, "central/key.pem")))
+	utils.Should(os.Setenv(mtls.CAFileEnvName, path.Join(certPath, "ca.pem")))
+	utils.Should(os.Setenv(tlsconfig.MTLSAdditionalCADirEnvName, additionalCAPath))
+	utils.Should(os.Setenv(mtls.CertFilePathEnvName, path.Join(certPath, "cert.pem")))
+	utils.Should(os.Setenv(mtls.KeyFileEnvName, path.Join(certPath, "key.pem")))
 
 	metadataService := service.New()
 	message, err := metadataService.TLSChallenge(context.TODO(), &v1.TLSChallengeRequest{

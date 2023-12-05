@@ -22,7 +22,7 @@ openssl req -x509 -new -nodes -key "$SCRIPT_DIR"/additionalCA.key -sha256 -out "
 
 # The token is a random cryptographically generated number. Generation is done in sensor/common/centralclient/client.go:generateChallengeToken
 challenge_token="h83_PGhSqS8OAvplb8asYMfPHy1JhVVMKcajYyKmrIU="
-trustInfoResponse=$(go run "$GIT_ROOT/central/metadata/service/testdata/exec_tlschallenge.go" "$challenge_token" "$SCRIPT_DIR")
+trustInfoResponse=$(go run "$GIT_ROOT/central/metadata/service/testdata/exec_tlschallenge.go" "$challenge_token" "$SCRIPT_DIR/central" "$SCRIPT_DIR/additionalCAs")
 
 # Update signature and trustInfoSerialized example file
 echo "$trustInfoResponse" | jq ".trustInfoSerialized" -r > "$SCRIPT_DIR/trust_info_serialized.example"
