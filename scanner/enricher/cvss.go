@@ -25,15 +25,6 @@ var (
 )
 
 const (
-	// Type is the type of data returned from the Enricher's Enrich method.
-	Type = `message/vnd.clair.map.vulnerability; enricher=clair.cvss schema=https://csrc.nist.gov/schema/nvd/feed/1.1/cvss-v3.x.json`
-	// DefaultFeeds is the default place to look for CVE feeds.
-	//
-	// The enricher expects the structure to mirror that found here: files
-	// organized by year, prefixed with `nvdcve-1.1-` and with `.meta` and
-	// `.json.gz` extensions.
-	//
-	//doc:url updater
 	DefaultURL = `https://storage.googleapis.com/scanner-v4-test/nvd-bundle/nvd-data.tar.gz`
 
 	// This appears above and must be the same.
@@ -136,8 +127,7 @@ func (e *Enricher) downloadFile(filepath string) error {
 	return err
 }
 
-// processDataBundle processes the JSON files in a given .tar.gz file
-func processDataBundle(filePath string) error {
+func processDataBundle(filePath string, w io.Writer) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
@@ -151,35 +141,41 @@ func processDataBundle(filePath string) error {
 	defer gzr.Close()
 
 	tr := tar.NewReader(gzr)
+	var v CVE // Reuse this struct for each vulnerability
 	for {
 		header, err := tr.Next()
 
-		// End
 		if err == io.EOF {
 			break
 		}
-
 		if err != nil {
 			return err
 		}
-
+		enc := json.NewEncoder(w)
 		if strings.HasSuffix(header.Name, ".json") {
-			var vulnerabilities struct {
-				Vulnerabilities []CVE `json:"vulnerabilities"`
-			}
+			decoder := json.NewDecoder(tr)
+			for decoder.More() {
+				v = CVE{} // Reset to zero value
+				if err := decoder.Decode(&v); err != nil {
+					return err
+				}
+				r := driver.EnrichmentRecord{
+					Tags: []string{v.CVE.Meta.ID},
+				}
+				if v.Impact.V3.CVSS != nil {
+					r.Enrichment = v.Impact.V3.CVSS
+				} else if v.Impact.V2.CVSS != nil {
+					r.Enrichment = v.Impact.V2.CVSS
+				} else {
+					continue
+				}
 
-			if err := json.NewDecoder(tr).Decode(&vulnerabilities); err != nil {
-				return err
-			}
-
-			for _, v := range vulnerabilities.Vulnerabilities {
-				fmt.Printf("CVE ID: %s\n", v.CVE.Meta.ID)
-				fmt.Printf("CVSS v3: %s\n", string(v.Impact.V3.CVSS))
-				fmt.Printf("CVSS v2: %s\n", string(v.Impact.V2.CVSS))
+				if err := enc.Encode(&r); err != nil {
+					return err
+				}
 			}
 		}
 	}
-
 	return nil
 }
 
