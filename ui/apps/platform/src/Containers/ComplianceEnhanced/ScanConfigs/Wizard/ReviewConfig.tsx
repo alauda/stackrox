@@ -15,8 +15,7 @@ import {
     Title,
 } from '@patternfly/react-core';
 
-import { ClusterScopeObject } from 'services/RolesService';
-import { ComplianceProfile } from 'services/ComplianceEnhancedService';
+import { ComplianceProfile, ComplianceIntegration } from 'services/ComplianceEnhancedService';
 
 import { ScanConfigFormValues } from './useFormikScanConfig';
 import {
@@ -25,7 +24,7 @@ import {
 } from '../compliance.scanConfigs.utils';
 
 export type ProfileSelectionProps = {
-    clusters: ClusterScopeObject[];
+    clusters: ComplianceIntegration[];
     profiles: ComplianceProfile[];
     errorMessage: string;
 };
@@ -42,7 +41,7 @@ function ReviewConfig({ clusters, profiles, errorMessage }: ProfileSelectionProp
             .filter((item): item is T => item !== undefined);
     }
 
-    const selectedClusters = findById<ClusterScopeObject>(formikValues.clusters, clusters);
+    const selectedClusters = findById<ComplianceIntegration>(formikValues.clusters, clusters);
     const selectedProfiles = findById<ComplianceProfile>(formikValues.profiles, profiles);
 
     return (
@@ -84,7 +83,7 @@ function ReviewConfig({ clusters, profiles, errorMessage }: ProfileSelectionProp
                     </Text>
                     <TextList isPlain>
                         {selectedClusters.map((cluster) => (
-                            <TextListItem key={cluster.id}>{cluster.name}</TextListItem>
+                            <TextListItem key={cluster.id}>{cluster.clusterName}</TextListItem>
                         ))}
                     </TextList>
                 </StackItem>
