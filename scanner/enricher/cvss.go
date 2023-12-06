@@ -33,18 +33,15 @@ const (
 
 type CVE struct {
 	CVE struct {
-		Meta struct {
-			ID string `json:"ID"`
-		} `json:"CVE_data_meta"`
+		ID               string `json:"id"`
+		SourceIdentifier string `json:"sourceIdentifier"`
+		Published        string `json:"published"`
+		LastModified     string `json:"lastModified"`
 	} `json:"cve"`
-	Impact struct {
-		V3 struct {
-			CVSS json.RawMessage `json:"cvssV3"`
-		} `json:"baseMetricV3"`
-		V2 struct {
-			CVSS json.RawMessage `json:"cvssV2"`
-		} `json:"baseMetricV2"`
-	} `json:"impact"`
+	Metrics struct {
+		CvssMetricV2  json.RawMessage `json:"cvssMetricV2"`
+		CvssMetricV31 json.RawMessage `json:"cvssMetricV31"`
+	} `json:"metrics"`
 }
 
 // Config is the configuration for Enricher.
@@ -160,12 +157,12 @@ func processDataBundle(filePath string, w io.Writer) error {
 					return err
 				}
 				r := driver.EnrichmentRecord{
-					Tags: []string{v.CVE.Meta.ID},
+					Tags: []string{v.CVE.ID},
 				}
-				if v.Impact.V3.CVSS != nil {
-					r.Enrichment = v.Impact.V3.CVSS
-				} else if v.Impact.V2.CVSS != nil {
-					r.Enrichment = v.Impact.V2.CVSS
+				if v.Metrics.CvssMetricV31 != nil {
+					r.Enrichment = v.Metrics.CvssMetricV31
+				} else if v.Metrics.CvssMetricV2 != nil {
+					r.Enrichment = v.Metrics.CvssMetricV2
 				} else {
 					continue
 				}

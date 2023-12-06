@@ -8,7 +8,10 @@ indexer:
   get_layer_timeout: 1m
   repo:
     rhel-repository-scanner:
-        repo2cpe_mapping_url: https://sensor.stackrox.svc/scanner-v4/definitions?file=repo2cpe
+        repo2cpe_mapping_url: https://sensor.stackrox.svc/scanner-v4/definitions?type=repo2cpe
+  package:
+    rhel_containerscanner:
+        name2repos_mapping_url: https://sensor.stackrox.svc/scanner-v4/definitions?type=name2cpe
 matcher:
   enable: true
   database:
