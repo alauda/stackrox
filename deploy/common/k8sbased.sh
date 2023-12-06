@@ -47,6 +47,7 @@ function hotload_binary {
   local binary_name="$1"
   local local_name="$2"
   local deployment="$3"
+  local namespace="${4:-stackrox}"
 
   echo
   echo "**********"
@@ -55,8 +56,8 @@ function hotload_binary {
   echo
 
   binary_path=$(realpath "$(git rev-parse --show-toplevel)/bin/linux_amd64/${local_name}")
-  kubectl -n stackrox patch "deploy/${deployment}" -p '{"spec":{"template":{"spec":{"containers":[{"name":"'${deployment}'","volumeMounts":[{"mountPath":"/stackrox/'${binary_name}'","name":"'binary-${local_name}'"}]}],"volumes":[{"hostPath":{"path":"'${binary_path}'","type":""},"name":"'binary-${local_name}'"}]}}}}'
-  kubectl -n stackrox set env "deploy/$deployment" "ROX_HOTRELOAD=true"
+  kubectl -n "$namespace" patch "deploy/${deployment}" -p '{"spec":{"template":{"spec":{"containers":[{"name":"'${deployment}'","volumeMounts":[{"mountPath":"/stackrox/'${binary_name}'","name":"'binary-${local_name}'"}]}],"volumes":[{"hostPath":{"path":"'${binary_path}'","type":""},"name":"'binary-${local_name}'"}]}}}}'
+  kubectl -n "$namespace" set env "deploy/$deployment" "ROX_HOTRELOAD=true"
 }
 
 function verify_orch {
@@ -654,37 +655,37 @@ function launch_sensor {
     fi
 
     if [[ -n "${ROX_AFTERGLOW_PERIOD}" ]]; then
-       kubectl -n stackrox set env ds/collector ROX_AFTERGLOW_PERIOD="${ROX_AFTERGLOW_PERIOD}"
+       kubectl -n "$sensor_namespace" set env ds/collector ROX_AFTERGLOW_PERIOD="${ROX_AFTERGLOW_PERIOD}"
     fi
 
     # For local installations (e.g. on Colima): hotload binary and update resource requests
     if [[ "$(local_dev)" == "true" ]]; then
         if [[ "${ROX_HOTRELOAD}" == "true" ]]; then
-            hotload_binary bin/kubernetes-sensor kubernetes sensor
+            hotload_binary bin/kubernetes-sensor kubernetes sensor "$sensor_namespace"
         fi
         if [[ -z "${IS_RACE_BUILD}" ]]; then
-           kubectl -n stackrox patch deploy/sensor --patch '{"spec":{"template":{"spec":{"containers":[{"name":"sensor","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"500m","memory":"500Mi"}}}]}}}}'
+           kubectl -n "$sensor_namespace" patch deploy/sensor --patch '{"spec":{"template":{"spec":{"containers":[{"name":"sensor","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"500m","memory":"500Mi"}}}]}}}}'
         fi
     fi
 
     # When running CI steps or when SENSOR_DEV_RESOURCES is set to true: only update resource requests
     if [[ -n "${CI}" || "${SENSOR_DEV_RESOURCES}" == "true" ]]; then
         if [[ -z "${IS_RACE_BUILD}" ]]; then
-            kubectl -n stackrox patch deploy/sensor --patch '{"spec":{"template":{"spec":{"containers":[{"name":"sensor","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"500m","memory":"500Mi"}}}]}}}}'
+            kubectl -n "$sensor_namespace" patch deploy/sensor --patch '{"spec":{"template":{"spec":{"containers":[{"name":"sensor","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"500m","memory":"500Mi"}}}]}}}}'
         fi
     fi
 
     if [[ "$MONITORING_SUPPORT" == "true" || ( "$(local_dev)" != "true" && -z "$MONITORING_SUPPORT" ) ]]; then
-      "${COMMON_DIR}/monitoring.sh"
+      "${COMMON_DIR}/monitoring.sh" "$sensor_namespace"
     fi
 
     # If deploying with chaos proxy enabled, patch sensor to add toxiproxy proxy deployment
     if [[ "$CHAOS_PROXY" == "true" ]]; then
-        original_endpoint=$(kubectl -n stackrox get deploy/sensor -ojsonpath='{.spec.template.spec.containers[0].env[?(@.name=="ROX_CENTRAL_ENDPOINT")].value}')
+        original_endpoint=$(kubectl -n "$sensor_namespace" get deploy/sensor -ojsonpath='{.spec.template.spec.containers[0].env[?(@.name=="ROX_CENTRAL_ENDPOINT")].value}')
 
         echo "Patching sensor with toxiproxy container"
-        kubectl -n stackrox patch deploy/sensor --type=json -p="$(cat "${common_dir}/sensor-toxiproxy-patch.json")"
-        kubectl -n stackrox set env deploy/sensor -e ROX_CENTRAL_ENDPOINT_NO_PROXY="$original_endpoint" -e ROX_CENTRAL_ENDPOINT="localhost:8989"
+        kubectl -n "$sensor_namespace" patch deploy/sensor --type=json -p="$(cat "${common_dir}/sensor-toxiproxy-patch.json")"
+        kubectl -n "$sensor_namespace" set env deploy/sensor -e ROX_CENTRAL_ENDPOINT_NO_PROXY="$original_endpoint" -e ROX_CENTRAL_ENDPOINT="localhost:8989"
     fi
 
     echo

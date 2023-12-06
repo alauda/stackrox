@@ -1,8 +1,10 @@
 #!/bin/bash
 
-kubectl -n stackrox patch svc/sensor -p '{"spec":{"ports":[{"name":"monitoring","port":9090,"protocol":"TCP","targetPort":9090}]}}'
-kubectl -n stackrox patch svc/central -p '{"spec":{"ports":[{"name":"monitoring","port":9090,"protocol":"TCP","targetPort":9090}]}}'
-kubectl -n stackrox patch daemonset/collector --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/1/ports", "value":[{"containerPort":9091,"name":"cmonitor","protocol":"TCP"}]}]'
+namespace="${1:-stackrox}"
+
+kubectl -n "$namespace" patch svc/sensor -p '{"spec":{"ports":[{"name":"monitoring","port":9090,"protocol":"TCP","targetPort":9090}]}}'
+kubectl -n "$namespace" patch svc/central -p '{"spec":{"ports":[{"name":"monitoring","port":9090,"protocol":"TCP","targetPort":9090}]}}'
+kubectl -n "$namespace" patch daemonset/collector --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/1/ports", "value":[{"containerPort":9091,"name":"cmonitor","protocol":"TCP"}]}]'
 
 # Modify network policies to allow ingress
 kubectl apply -f - <<EOF
@@ -12,7 +14,7 @@ metadata:
   labels:
     app.kubernetes.io/name: stackrox
   name: allow-monitoring
-  namespace: stackrox
+  namespace: "$namespace"
 spec:
   ingress:
   - ports:
@@ -30,7 +32,7 @@ metadata:
   labels:
     app.kubernetes.io/name: stackrox
   name: allow-compliance-monitoring
-  namespace: stackrox
+  namespace: "$namespace"
 spec:
   ingress:
   - ports:
