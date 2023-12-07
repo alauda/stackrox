@@ -5,9 +5,12 @@ import (
 	"testing"
 
 	"github.com/stackrox/rox/generated/storage"
+	handlerMocks "github.com/stackrox/rox/pkg/cloudproviders/gcp/handler/mocks"
+	"github.com/stackrox/rox/pkg/cloudproviders/gcp/registry"
 	"github.com/stackrox/rox/pkg/registries/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestGoogleMatch(t *testing.T) {
@@ -57,12 +60,16 @@ func TestGoogleMatch(t *testing.T) {
 	}, &storage.ImageIntegration{})
 	require.NoError(t, err)
 
-	gr := &googleRegistry{
-		Registry: reg,
-		project:  "ultra-current-825",
-	}
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("%s/%s", c.name.GetRegistry(), c.name.GetRemote()), func(t *testing.T) {
+			handler := handlerMocks.NewMockHandler[*registry.Client](gomock.NewController(t))
+			handler.EXPECT().GetClient().Return(registry.NewTestClient(t), func() {}).MaxTimes(1)
+			gr := &googleRegistry{
+				Registry:      reg,
+				project:       "ultra-current-825",
+				clientHandler: handler,
+			}
+
 			assert.Equal(t, c.matches, gr.Match(c.name))
 		})
 	}

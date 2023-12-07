@@ -7,6 +7,7 @@ import (
 	securitycenter "cloud.google.com/go/securitycenter/apiv1"
 	"cloud.google.com/go/storage"
 	"github.com/stackrox/rox/pkg/cloudproviders/gcp/handler"
+	"github.com/stackrox/rox/pkg/cloudproviders/gcp/registry"
 	"github.com/stackrox/rox/pkg/k8sutil"
 	"k8s.io/client-go/kubernetes"
 )
@@ -17,6 +18,7 @@ type stsClientManagerImpl struct {
 	credManager                 CredentialsManager
 	storageClientHandler        handler.Handler[*storage.Client]
 	securityCenterClientHandler handler.Handler[*securitycenter.Client]
+	registryClientHandler       handler.Handler[*registry.Client]
 }
 
 var _ STSClientManager = &stsClientManagerImpl{}
@@ -46,6 +48,7 @@ func NewSTSClientManager(namespace string, secretName string) STSClientManager {
 	mgr := &stsClientManagerImpl{
 		storageClientHandler:        handler.NewHandlerNoInit[*storage.Client](),
 		securityCenterClientHandler: handler.NewHandlerNoInit[*securitycenter.Client](),
+		registryClientHandler:       handler.NewHandlerNoInit[*registry.Client](),
 	}
 	mgr.credManager = newCredentialsManagerImpl(k8sClient, namespace, secretName, mgr.updateClients)
 	mgr.updateClients()
@@ -75,6 +78,9 @@ func (c *stsClientManagerImpl) updateClients() {
 	if err := c.securityCenterClientHandler.UpdateClient(ctx, creds); err != nil {
 		log.Error("Failed to update GCP security center client: ", err)
 	}
+	if err := c.registryClientHandler.UpdateClient(ctx, creds); err != nil {
+		log.Error("Failed to update GCP registry client: ", err)
+	}
 }
 
 func (c *stsClientManagerImpl) StorageClientHandler() handler.Handler[*storage.Client] {
@@ -83,4 +89,8 @@ func (c *stsClientManagerImpl) StorageClientHandler() handler.Handler[*storage.C
 
 func (c *stsClientManagerImpl) SecurityCenterClientHandler() handler.Handler[*securitycenter.Client] {
 	return c.securityCenterClientHandler
+}
+
+func (c *stsClientManagerImpl) RegistryClientHandler() handler.Handler[*registry.Client] {
+	return c.registryClientHandler
 }

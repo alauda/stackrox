@@ -7,6 +7,7 @@ import (
 	"github.com/stackrox/rox/pkg/cloudproviders/gcp/types"
 	"github.com/stackrox/rox/pkg/concurrency"
 	"github.com/stackrox/rox/pkg/sync"
+	"github.com/stackrox/rox/pkg/utils"
 	"golang.org/x/oauth2/google"
 )
 
@@ -50,13 +51,19 @@ func (h *handlerImpl[T]) GetClient() (T, types.DoneFunc) {
 // NewHandlerNoInit creates a handler without initializing credentials.
 func NewHandlerNoInit[T types.GcpSDKClients]() Handler[T] {
 	wg := concurrency.NewWaitGroup(0)
-	return &handlerImpl[T]{factory: GetClientFactory(*new(T)), wg: &wg}
+	factory, err := GetClientFactory(*new(T))
+	utils.Must(err)
+	return &handlerImpl[T]{factory: factory, wg: &wg}
 }
 
 // NewHandler creates a handler initialized with the given credentials.
 func NewHandler[T types.GcpSDKClients](ctx context.Context, creds *google.Credentials) (Handler[T], error) {
 	wg := concurrency.NewWaitGroup(0)
-	h := &handlerImpl[T]{factory: GetClientFactory(*new(T)), wg: &wg}
+	factory, err := GetClientFactory(*new(T))
+	if err != nil {
+		return nil, errors.Wrap(err, "creating factory")
+	}
+	h := &handlerImpl[T]{factory: factory, wg: &wg}
 	if err := h.UpdateClient(ctx, creds); err != nil {
 		return nil, errors.Wrap(err, "updating client")
 	}

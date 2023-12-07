@@ -22,9 +22,7 @@ import (
 	"github.com/stackrox/rox/pkg/registries/types"
 )
 
-var (
-	log = logging.LoggerForModule()
-)
+var log = logging.LoggerForModule()
 
 var _ types.Registry = (*ecr)(nil)
 
@@ -140,7 +138,6 @@ func (e *ecr) Test() error {
 	}
 
 	_, err := e.Registry.Client.Repositories()
-
 	// the following code taken from generic Test method
 	if err != nil {
 		log.Errorf("error testing ECR integration: %v", err)

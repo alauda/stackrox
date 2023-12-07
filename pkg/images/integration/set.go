@@ -23,6 +23,7 @@ type Set interface {
 }
 
 // NewSet returns a new Set instance.
+// TODO: pass client manager singleton here
 func NewSet(reporter integrationhealth.Reporter) Set {
 	registryFactory := registries.NewFactory(registries.FactoryOptions{
 		CreatorFuncsWithoutRepoList: registries.AllCreatorFuncsWithoutRepoList,
