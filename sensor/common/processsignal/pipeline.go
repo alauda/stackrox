@@ -7,6 +7,7 @@ import (
 	"github.com/stackrox/rox/generated/internalapi/central"
 	"github.com/stackrox/rox/generated/storage"
 	"github.com/stackrox/rox/pkg/channelmultiplexer"
+	"github.com/stackrox/rox/pkg/features"
 	"github.com/stackrox/rox/pkg/logging"
 	"github.com/stackrox/rox/pkg/process/filter"
 	"github.com/stackrox/rox/pkg/process/normalize"
@@ -88,6 +89,9 @@ func (p *Pipeline) Shutdown() {
 
 // Notify allows the component state to be propagated to the pipeline
 func (p *Pipeline) Notify(e common.SensorComponentEvent) {
+	if features.SensorCapturesIntermediateEvents.Enabled() {
+		return
+	}
 	log.Info(common.LogSensorComponentEvent(e))
 	switch e {
 	case common.SensorComponentEventCentralReachable:
