@@ -204,7 +204,7 @@ deploy_central() {
 
 deploy_central_via_operator() {
     local namespace="$CENTRAL_NAMESPACE"
-    info "Deploying central via operator into namespae $namespace"
+    info "Deploying central via operator into namespace $namespace"
 
     make -C operator stackrox-image-pull-secret
 
@@ -624,9 +624,8 @@ remove_existing_stackrox_resources() {
 
     (
         # midstream ocp specific
-        kubectl -n "$CENTRAL_NAMESPACE"-operator delete cm,deploy,ds,rs,rc,networkpolicy,secret,svc,serviceaccount,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app=rhacs-operator" --wait
+        kubectl -n stackrox-operator delete cm,deploy,ds,rs,rc,networkpolicy,secret,svc,serviceaccount,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app=rhacs-operator" --wait
         kubectl -n "$CENTRAL_NAMESPACE" delete cm,deploy,ds,networkpolicy,secret,svc,serviceaccount,validatingwebhookconfiguration,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app.kubernetes.io/name=stackrox" --wait
-        kubectl -n "$SENSOR_NAMESPACE"-operator delete cm,deploy,ds,rs,rc,networkpolicy,secret,svc,serviceaccount,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app=rhacs-operator" --wait
         kubectl -n "$SENSOR_NAMESPACE" delete cm,deploy,ds,networkpolicy,secret,svc,serviceaccount,validatingwebhookconfiguration,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app.kubernetes.io/name=stackrox" --wait
         # openshift specific:
         kubectl -n "$CENTRAL_NAMESPACE" delete SecurityContextConstraints -l "app.kubernetes.io/name=stackrox" --wait

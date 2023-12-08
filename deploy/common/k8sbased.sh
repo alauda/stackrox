@@ -629,7 +629,8 @@ function launch_sensor {
 
       if [[ "$namespace" != "stackrox" ]]; then
         kubectl create namespace "$namespace" &>/dev/null || true
-        kubectl -n "$namespace" get secret stackrox &>/dev/null || kubectl -n "$SENSOR_NAMESPACE" create -f - < <("${common_dir}/pull-secret.sh" stackrox docker.io)
+        kubectl -n "$namespace" get secret stackrox &>/dev/null \
+          || kubectl -n "$namespace" create -f - < <("${common_dir}/pull-secret.sh" stackrox docker.io)
       fi
 
       helm upgrade --install -n "$namespace" --create-namespace stackrox-secured-cluster-services "$helm_chart" \
