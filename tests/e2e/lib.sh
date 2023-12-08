@@ -425,6 +425,7 @@ setup_podsecuritypolicies_config() {
 # wait_for_collectors_to_be_operational() ensures that collector pods are able
 # to load kernel objects and create network connections.
 wait_for_collectors_to_be_operational() {
+    local namespace=$SENSOR_NAMESPACE
     info "Will wait for collectors to reach a ready state in namespace $namespace"
 
     local readiness_indicator="Successfully established GRPC stream for signals"
@@ -436,13 +437,13 @@ wait_for_collectors_to_be_operational() {
     local all_ready="false"
     while [[ "$all_ready" == "false" ]]; do
         all_ready="true"
-        for pod in $(kubectl -n "$SENSOR_NAMESPACE" get pods -l app=collector -o json | jq -r '.items[].metadata.name'); do
+        for pod in $(kubectl -n "$namespace" get pods -l app=collector -o json | jq -r '.items[].metadata.name'); do
             echo "Checking readiness of $pod"
-            if kubectl -n "$SENSOR_NAMESPACE" logs -c collector "$pod" | grep "$readiness_indicator" > /dev/null 2>&1; then
+            if kubectl -n "$namespace" logs -c collector "$pod" | grep "$readiness_indicator" > /dev/null 2>&1; then
                 echo "$pod is deemed ready"
             else
                 info "$pod is not ready"
-                kubectl -n "$SENSOR_NAMESPACE" logs -c collector "$pod"
+                kubectl -n "$namespace" logs -c collector "$pod"
                 all_ready="false"
                 break
             fi

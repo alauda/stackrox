@@ -15,7 +15,8 @@ set -eu
 export SENSOR_NAMESPACE=${SENSOR_NAMESPACE:-stackrox}
 
 sensor_wait() {
-    local namespace="$SENSOR_NAMESPACE"
+    local namespace=$SENSOR_NAMESPACE
+
     echo "Waiting for sensor to start in namespace $namespace"
 
     start_time="$(date '+%s')"
