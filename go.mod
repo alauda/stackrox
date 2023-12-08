@@ -139,9 +139,9 @@ require (
 	k8s.io/apiextensions-apiserver v0.28.4
 	k8s.io/apimachinery v0.28.4
 	k8s.io/apiserver v0.28.4
-	k8s.io/cli-runtime v0.28.2
+	k8s.io/cli-runtime v0.28.4
 	k8s.io/client-go v0.28.4
-	k8s.io/kubectl v0.28.2
+	k8s.io/kubectl v0.28.4
 	k8s.io/kubelet v0.27.2
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	sigs.k8s.io/controller-runtime v0.16.3
@@ -203,7 +203,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
+	github.com/evanphx/json-patch v5.7.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/facebookgo/ensure v0.0.0-20200202191622-63f1cf65ac4c // indirect
@@ -259,7 +259,7 @@ require (
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/in-toto/in-toto-golang v0.9.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/itchyny/gojq v0.12.13 // indirect
+	github.com/itchyny/gojq v0.12.14 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.14.1 // indirect
@@ -455,6 +455,9 @@ replace (
 
 	github.com/sigstore/cosign/v2 => github.com/stackrox/cosign/v2 v2.0.0-20231120123622-59ae3354a4f9
 
+	// WiP
+	github.com/stackrox/helmtest => github.com/stackrox/helmtest v0.0.0-20231208093130-d3d2e4f767df
+
 	github.com/tecbot/gorocksdb => github.com/DataDog/gorocksdb v0.0.0-20200107201226-9722c3a2e063
 	go.uber.org/zap => github.com/stackrox/zap v1.15.1-0.20230918235618-2bd149903d0e
 	// Our fork has a change exposing a method to do generic POST requests
@@ -469,6 +472,8 @@ replace (
 
 	gopkg.in/yaml.v2 => github.com/stackrox/yaml/v2 v2.4.1
 	gopkg.in/yaml.v3 => github.com/stackrox/yaml/v3 v3.0.0
+	// WiP, required by the helmtest override.
+	helm.sh/helm/v3 => github.com/porridge/helm/v3 v3.0.0-20231207123003-732d70f87a46
 
 	sigs.k8s.io/kustomize/kyaml v0.14.1 => sigs.k8s.io/kustomize/kyaml v0.14.3
 )
