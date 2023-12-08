@@ -12,8 +12,10 @@ set -eu
 # $ ./scripts/ci/sensor-wait.sh
 #
 
+export SENSOR_NAMESPACE=${SENSOR_NAMESPACE:-stackrox}
+
 sensor_wait() {
-    namespace=${NAMESPACE_OVERRIDE:-stackrox}
+    local namespace="$SENSOR_NAMESPACE"
     echo "Waiting for sensor to start in namespace $namespace"
 
     start_time="$(date '+%s')"

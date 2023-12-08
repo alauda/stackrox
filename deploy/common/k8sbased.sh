@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+export CENTRAL_NAMESPACE=${CENTRAL_NAMESPACE:-stackrox}
+export SENSOR_NAMESPACE=${SENSOR_NAMESPACE:-stackrox}
+
 function realpath {
 	[[ -n "$1" ]] || return 0
 	python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$1"
@@ -90,7 +93,7 @@ function local_dev {
 # Checks if central already exists in this cluster.
 # If yes, the user is asked if they want to continue. If they answer no, then the script is terminated.
 function prompt_if_central_exists() {
-    if "${ORCH_CMD}" -n stackrox get deployment central 2>&1; then
+    if "${ORCH_CMD}" -n "$CENTRAL_NAMESPACE" get deployment central 2>&1; then
         yes_no_prompt "Detected there is already a central running on this cluster. Are you sure you want to proceed with this deploy?" || { echo >&2 "Exiting as requested"; exit 1; }
     fi
 }
@@ -116,6 +119,8 @@ function yes_no_prompt() {
 
 function launch_central {
     local k8s_dir="$1"
+    local namespace=${2:-$CENTRAL_NAMESPACE}
+
     local common_dir="${k8s_dir}/../common"
 
     verify_orch
@@ -278,7 +283,7 @@ function launch_central {
 
         helm dependency update "${COMMON_DIR}/../charts/monitoring"
         envsubst < "${COMMON_DIR}/../charts/monitoring/values.yaml" > "${COMMON_DIR}/../charts/monitoring/values_substituted.yaml"
-        helm upgrade -n stackrox --install --create-namespace stackrox-monitoring "${COMMON_DIR}/../charts/monitoring" --values "${COMMON_DIR}/../charts/monitoring/values_substituted.yaml" "${helm_args[@]}"
+        helm upgrade -n "$namespace" --install --create-namespace stackrox-monitoring "${COMMON_DIR}/../charts/monitoring" --values "${COMMON_DIR}/../charts/monitoring/values_substituted.yaml" "${helm_args[@]}"
         rm "${COMMON_DIR}/../charts/monitoring/values_substituted.yaml"
         echo "Deployed Monitoring..."
     fi
@@ -290,8 +295,8 @@ function launch_central {
 
     echo "Deploying Central..."
 
-    ${KUBE_COMMAND:-kubectl} get namespace "${STACKROX_NAMESPACE}" &>/dev/null || \
-      ${KUBE_COMMAND:-kubectl} create namespace "${STACKROX_NAMESPACE}"
+    ${KUBE_COMMAND:-kubectl} get "$namespace" "${STACKROX_NAMESPACE}" &>/dev/null || \
+      ${KUBE_COMMAND:-kubectl} create "$namespace" "${STACKROX_NAMESPACE}"
 
     if [[ -f "$unzip_dir/values-public.yaml" ]]; then
       if [[ -n "${REGISTRY_USERNAME}" ]]; then
@@ -370,11 +375,11 @@ function launch_central {
 
       if [[ -n "$CI" ]]; then
         helm lint "${helm_chart}"
-        helm lint "${helm_chart}" -n stackrox
-        helm lint "${helm_chart}" -n stackrox "${helm_args[@]}"
+        helm lint "${helm_chart}" -n "$namespace"
+        helm lint "${helm_chart}" -n "$namespace" "${helm_args[@]}"
       fi
 
-      helm upgrade --install -n stackrox stackrox-central-services "$helm_chart" \
+      helm upgrade --install -n "$namespace" stackrox-central-services "$helm_chart" \
           "${helm_args[@]}"
     else
       if [[ -n "${REGISTRY_USERNAME}" ]]; then
@@ -385,25 +390,25 @@ function launch_central {
       echo
 
       if [[ "${is_local_dev}" == "true" ]]; then
-          kubectl -n stackrox patch deploy/central --patch '{"spec":{"template":{"spec":{"containers":[{"name":"central","resources":{"limits":{"cpu":"1","memory":"4Gi"},"requests":{"cpu":"1","memory":"1Gi"}}}]}}}}'
+          kubectl -n "$namespace" patch deploy/central --patch '{"spec":{"template":{"spec":{"containers":[{"name":"central","resources":{"limits":{"cpu":"1","memory":"4Gi"},"requests":{"cpu":"1","memory":"1Gi"}}}]}}}}'
           if [[ "${ROX_POSTGRES_DATASTORE}" == "true" ]]; then
-            kubectl -n stackrox patch deploy/central-db --patch '{"spec":{"template":{"spec":{"initContainers":[{"name":"init-db","resources":{"limits":{"cpu":"1","memory":"4Gi"},"requests":{"cpu":1,"memory":"1Gi"}}}],"containers":[{"name":"central-db","resources":{"limits":{"cpu":"1","memory":"4Gi"},"requests":{"cpu":"1","memory":"1Gi"}}}]}}}}'
+            kubectl -n "$namespace" patch deploy/central-db --patch '{"spec":{"template":{"spec":{"initContainers":[{"name":"init-db","resources":{"limits":{"cpu":"1","memory":"4Gi"},"requests":{"cpu":1,"memory":"1Gi"}}}],"containers":[{"name":"central-db","resources":{"limits":{"cpu":"1","memory":"4Gi"},"requests":{"cpu":"1","memory":"1Gi"}}}]}}}}'
           fi
       elif [[ "${ROX_POSTGRES_DATASTORE}" == "true" ]]; then
-          ${ORCH_CMD} -n stackrox patch deploy/central-db --patch "$(cat "${common_dir}/central-db-patch.yaml")"
+          ${ORCH_CMD} -n "$namespace" patch deploy/central-db --patch "$(cat "${common_dir}/central-db-patch.yaml")"
       fi
       if [[ "${CGO_CHECKS}" == "true" ]]; then
         echo "CGO_CHECKS set to true. Setting GODEBUG=cgocheck=2 and MUTEX_WATCHDOG_TIMEOUT_SECS=15"
         # Extend mutex watchdog timeout because cgochecks hamper performance
-        ${ORCH_CMD} -n stackrox set env deploy/central GODEBUG=cgocheck=2 MUTEX_WATCHDOG_TIMEOUT_SECS=15
+        ${ORCH_CMD} -n "$namespace" set env deploy/central GODEBUG=cgocheck=2 MUTEX_WATCHDOG_TIMEOUT_SECS=15
       fi
 
       # set logging options
       if [[ -n $LOGLEVEL ]]; then
-        ${ORCH_CMD} -n stackrox set env deploy/central LOGLEVEL="${LOGLEVEL}"
+        ${ORCH_CMD} -n "$namespace" set env deploy/central LOGLEVEL="${LOGLEVEL}"
       fi
       if [[ -n $MODULE_LOGLEVELS ]]; then
-        ${ORCH_CMD} -n stackrox set env deploy/central MODULE_LOGLEVELS="${MODULE_LOGLEVELS}"
+        ${ORCH_CMD} -n "$namespace" set env deploy/central MODULE_LOGLEVELS="${MODULE_LOGLEVELS}"
       fi
 
       if [[ "$ROX_MANAGED_CENTRAL" == "true" ]]; then
@@ -419,11 +424,11 @@ function launch_central {
           launch_service $unzip_dir scanner
 
           if [[ -n "$CI" ]]; then
-            ${ORCH_CMD} -n stackrox patch deployment scanner --patch "$(cat "${common_dir}/scanner-patch.yaml")"
-            ${ORCH_CMD} -n stackrox patch hpa scanner --patch "$(cat "${common_dir}/scanner-hpa-patch.yaml")"
+            ${ORCH_CMD} -n "$namespace" patch deployment scanner --patch "$(cat "${common_dir}/scanner-patch.yaml")"
+            ${ORCH_CMD} -n "$namespace" patch hpa scanner --patch "$(cat "${common_dir}/scanner-hpa-patch.yaml")"
           elif [[ "${is_local_dev}" == "true" ]]; then
-            ${ORCH_CMD} -n stackrox patch deployment scanner --patch "$(cat "${common_dir}/scanner-local-patch.yaml")"
-            ${ORCH_CMD} -n stackrox patch hpa scanner --patch "$(cat "${common_dir}/scanner-hpa-patch.yaml")"
+            ${ORCH_CMD} -n "$namespace" patch deployment scanner --patch "$(cat "${common_dir}/scanner-local-patch.yaml")"
+            ${ORCH_CMD} -n "$namespace" patch hpa scanner --patch "$(cat "${common_dir}/scanner-hpa-patch.yaml")"
           fi
           echo
       fi
@@ -435,7 +440,7 @@ function launch_central {
     fi
 
     if [[ "${is_local_dev}" == "true" && "${ROX_HOTRELOAD}" == "true" ]]; then
-      hotload_binary central central central
+      hotload_binary central central central "$namespace"
     fi
 
     # Wait for any pending changes to Central deployment to get reconciled before trying to connect it.
@@ -446,7 +451,7 @@ function launch_central {
     if [[ "${IS_RACE_BUILD:-}" == "true" ]]; then
       rollout_wait_timeout="9m"
     fi
-    kubectl -n stackrox rollout status deploy/central --timeout="$rollout_wait_timeout"
+    kubectl -n "$namespace" rollout status deploy/central --timeout="$rollout_wait_timeout"
 
     # if we have specified that we want to use a load balancer, then use that endpoint instead of localhost
     if [[ "${LOAD_BALANCER}" == "lb" ]]; then
@@ -456,7 +461,7 @@ function launch_central {
         until [[ -n "${LB_IP}" ]]; do
             echo -n "."
             sleep 1
-            LB_IP=$(kubectl -n stackrox get svc/central-loadbalancer -o json | jq -r '.status.loadBalancer.ingress[0] | .ip // .hostname')
+            LB_IP=$(kubectl -n "$namespace" get svc/central-loadbalancer -o json | jq -r '.status.loadBalancer.ingress[0] | .ip // .hostname')
             if [[ "$LB_IP" == "null" ]]; then
               unset LB_IP
             fi
@@ -471,7 +476,7 @@ function launch_central {
         until [ -n "${ROUTE_HOST}" ]; do
             echo -n "."
             sleep 1
-            ROUTE_HOST=$(kubectl -n stackrox get route/central -o jsonpath='{.status.ingress[0].host}')
+            ROUTE_HOST=$(kubectl -n "$namespace" get route/central -o jsonpath='{.status.ingress[0].host}')
         done
         export API_ENDPOINT="${ROUTE_HOST}:443"
     else
@@ -499,6 +504,7 @@ function launch_central {
 
 function launch_sensor {
     local k8s_dir="$1"
+    local namespace=${2:-$SENSOR_NAMESPACE}
     local common_dir="${k8s_dir}/../common"
 
     local extra_config=()
@@ -617,8 +623,8 @@ function launch_sensor {
 
       if [[ -n "$CI" ]]; then
         helm lint "${helm_chart}"
-        helm lint "${helm_chart}" -n stackrox
-        helm lint "${helm_chart}" -n stackrox "${helm_args[@]}" "${extra_helm_config[@]}"
+        helm lint "${helm_chart}" -n "$namespace"
+        helm lint "${helm_chart}" -n "$namespace" "${helm_args[@]}" "${extra_helm_config[@]}"
       fi
 
       if [[ "$SENSOR_NAMESPACE" != "stackrox" ]]; then
