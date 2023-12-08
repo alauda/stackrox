@@ -16,7 +16,7 @@ os.environ["ROX_SCANNER_V4_ENABLED"] = "true"
 os.environ["STORE_METRICS"] = "true"
 os.environ["ROX_POSTGRES_DATASTORE"] = "true"
 os.environ["ROX_BASELINE_GENERATION_DURATION"] = "5m"
-os.environ["SENSOR_HELM_OVERRIDE_NAMESPACE"] = "stackrox-sc"
+os.environ["SENSOR_NAMESPACE"] = "stackrox-sc"
 
 ClusterTestRunner(
     cluster=GKECluster("scanner-v4-test", machine_type="e2-standard-8"),

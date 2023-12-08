@@ -15,6 +15,9 @@ source "$TEST_ROOT/scripts/ci/test_state.sh"
 
 export QA_TEST_DEBUG_LOGS="/tmp/qa-tests-backend-logs"
 
+export CENTRAL_NAMESPACE=${CENTRAL_NAMESPACE:-stackrox}
+export SENSOR_NAMESPACE=${SENSOR_NAMESPACE:-stackrox}
+
 # shellcheck disable=SC2120
 deploy_stackrox() {
     setup_podsecuritypolicies_config
@@ -33,7 +36,7 @@ deploy_stackrox() {
     sensor_wait
 
     # Bounce collectors to avoid restarts on initial module pull
-    kubectl -n stackrox delete pod -l app=collector --grace-period=0
+    kubectl -n "$SENSOR_NAMESPACE" delete pod -l app=collector --grace-period=0
 
     sensor_wait
 
@@ -293,19 +296,19 @@ deploy_sensor() {
         # https://stack-rox.atlassian.net/browse/ROX-5334
         # https://stack-rox.atlassian.net/browse/ROX-6891
         # et al.
-        kubectl -n stackrox set resources deploy/sensor -c sensor --requests 'cpu=2' --limits 'cpu=4'
+        kubectl -n "$SENSOR_NAMESPACE" set resources deploy/sensor -c sensor --requests 'cpu=2' --limits 'cpu=4'
     fi
 }
 
 deploy_sensor_via_operator() {
     info "Deploying sensor via operator"
 
-    kubectl -n stackrox exec deploy/central -- \
+    kubectl -n "$CENTRAL_NAMESPACE" exec deploy/central -- \
     roxctl central init-bundles generate my-test-bundle \
         --insecure-skip-tls-verify \
         --password "$ROX_PASSWORD" \
         --output-secrets - \
-    | kubectl -n stackrox apply -f -
+    | kubectl -n "$SENSOR_NAMESPACE" apply -f -
 
     if [[ -n "${COLLECTION_METHOD:-}" ]]; then
        echo "Overriding the product default collection method due to COLLECTION_METHOD variable: ${COLLECTION_METHOD}"
@@ -422,7 +425,7 @@ setup_podsecuritypolicies_config() {
 # wait_for_collectors_to_be_operational() ensures that collector pods are able
 # to load kernel objects and create network connections.
 wait_for_collectors_to_be_operational() {
-    info "Will wait for collectors to reach a ready state"
+    info "Will wait for collectors to reach a ready state in namespace $namespace"
 
     local readiness_indicator="Successfully established GRPC stream for signals"
     local timeout=300
@@ -433,13 +436,13 @@ wait_for_collectors_to_be_operational() {
     local all_ready="false"
     while [[ "$all_ready" == "false" ]]; do
         all_ready="true"
-        for pod in $(kubectl -n stackrox get pods -l app=collector -o json | jq -r '.items[].metadata.name'); do
+        for pod in $(kubectl -n "$SENSOR_NAMESPACE" get pods -l app=collector -o json | jq -r '.items[].metadata.name'); do
             echo "Checking readiness of $pod"
-            if kubectl -n stackrox logs -c collector "$pod" | grep "$readiness_indicator" > /dev/null 2>&1; then
+            if kubectl -n "$SENSOR_NAMESPACE" logs -c collector "$pod" | grep "$readiness_indicator" > /dev/null 2>&1; then
                 echo "$pod is deemed ready"
             else
                 info "$pod is not ready"
-                kubectl -n stackrox logs -c collector "$pod"
+                kubectl -n "$SENSOR_NAMESPACE" logs -c collector "$pod"
                 all_ready="false"
                 break
             fi
@@ -462,8 +465,8 @@ patch_resources_for_test() {
     require_environment "TEST_ROOT"
     require_environment "API_HOSTNAME"
 
-    kubectl -n stackrox patch svc central-loadbalancer --patch "$(cat "$TEST_ROOT"/tests/e2e/yaml/endpoints-test-lb-patch.yaml)"
-    kubectl -n stackrox apply -f "$TEST_ROOT/tests/e2e/yaml/endpoints-test-netpol.yaml"
+    kubectl -n "$CENTRAL_NAMESPACE" patch svc central-loadbalancer --patch "$(cat "$TEST_ROOT"/tests/e2e/yaml/endpoints-test-lb-patch.yaml)"
+    kubectl -n "$CENTRAL_NAMESPACE" apply -f "$TEST_ROOT/tests/e2e/yaml/endpoints-test-netpol.yaml"
 
     for target_port in 8080 8081 8082 8443 8444 8445 8446 8447 8448; do
         check_endpoint_availability "$target_port"
@@ -616,12 +619,16 @@ remove_existing_stackrox_resources() {
 
     (
         # midstream ocp specific
-        kubectl -n stackrox-operator delete cm,deploy,ds,rs,rc,networkpolicy,secret,svc,serviceaccount,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app=rhacs-operator" --wait
-        kubectl -n stackrox delete cm,deploy,ds,networkpolicy,secret,svc,serviceaccount,validatingwebhookconfiguration,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app.kubernetes.io/name=stackrox" --wait
+        kubectl -n "$CENTRAL_NAMESPACE"-operator delete cm,deploy,ds,rs,rc,networkpolicy,secret,svc,serviceaccount,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app=rhacs-operator" --wait
+        kubectl -n "$CENTRAL_NAMESPACE" delete cm,deploy,ds,networkpolicy,secret,svc,serviceaccount,validatingwebhookconfiguration,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app.kubernetes.io/name=stackrox" --wait
+        kubectl -n "$SENSOR_NAMESPACE"-operator delete cm,deploy,ds,rs,rc,networkpolicy,secret,svc,serviceaccount,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app=rhacs-operator" --wait
+        kubectl -n "$SENSOR_NAMESPACE" delete cm,deploy,ds,networkpolicy,secret,svc,serviceaccount,validatingwebhookconfiguration,pv,pvc,clusterrole,clusterrolebinding,role,rolebinding,psp -l "app.kubernetes.io/name=stackrox" --wait
         # openshift specific:
-        kubectl -n stackrox delete SecurityContextConstraints -l "app.kubernetes.io/name=stackrox" --wait
+        kubectl -n "$CENTRAL_NAMESPACE" delete SecurityContextConstraints -l "app.kubernetes.io/name=stackrox" --wait
+        kubectl -n "$SENSOR_NAMESPACE" delete SecurityContextConstraints -l "app.kubernetes.io/name=stackrox" --wait
         kubectl delete -R -f scripts/ci/psp --wait
-        kubectl delete ns stackrox --wait
+        kubectl delete ns "$CENTRAL_NAMESPACE" --wait
+        kubectl delete ns "$SENSOR_NAMESPACE" --wait
         kubectl delete ns stackrox-operator --wait
         helm uninstall monitoring
         helm uninstall central
@@ -639,7 +646,7 @@ wait_for_api() {
     max_seconds=${MAX_WAIT_SECONDS:-300}
 
     while true; do
-        central_json="$(kubectl -n stackrox get deploy/central -o json)"
+        central_json="$(kubectl -n "$CENTRAL_NAMESPACE" get deploy/central -o json)"
         replicas="$(jq '.status.replicas' <<<"$central_json")"
         ready_replicas="$(jq '.status.readyReplicas' <<<"$central_json")"
         curr_time="$(date '+%s')"
@@ -653,8 +660,8 @@ wait_for_api() {
 
         # Timeout case
         if (( elapsed_seconds > max_seconds )); then
-            kubectl -n stackrox get pod -o wide
-            kubectl -n stackrox get deploy -o wide
+            kubectl -n "$CENTRAL_NAMESPACE" get pod -o wide
+            kubectl -n "$CENTRAL_NAMESPACE" get deploy -o wide
             echo >&2 "wait_for_api() timeout after $max_seconds seconds."
             exit 1
         fi
@@ -668,7 +675,7 @@ wait_for_api() {
     info "Waiting for Central API endpoint"
 
     if [[ "${USE_MIDSTREAM_IMAGES}" == "true" ]]; then
-        API_HOSTNAME=$(kubectl get routes/central -n stackrox -o json | jq -r '.spec.host')
+        API_HOSTNAME=$(kubectl get routes/central -n "$CENTRAL_NAMESPACE" -o json | jq -r '.spec.host')
         API_PORT=443
     else
         API_HOSTNAME=localhost
@@ -710,7 +717,7 @@ wait_for_api() {
         info "port-forwards:"
         pgrep port-forward
         info "pods:"
-        kubectl -n stackrox get pod
+        kubectl -n "$CENTRAL_NAMESPACE" get pod
         exit 1
     fi
     set -e
@@ -748,7 +755,7 @@ _record_build_info() {
     # -race debug builds - use the image tag as the most reliable way to
     # determin the build under test.
     local central_image
-    central_image="$(kubectl -n stackrox get deploy central -o json | jq -r '.spec.template.spec.containers[0].image')"
+    central_image="$(kubectl -n "$CENTRAL_NAMESPACE" get deploy central -o json | jq -r '.spec.template.spec.containers[0].image')"
     if [[ "${central_image}" =~ -rcd$ ]]; then
         build_info="${build_info},-race"
     fi
@@ -893,7 +900,7 @@ wait_for_central_db() {
     max_seconds=300
 
     while true; do
-        central_db_json="$(kubectl -n stackrox get deploy/central-db -o json)"
+        central_db_json="$(kubectl -n "$CENTRAL_NAMESPACE" get deploy/central-db -o json)"
         replicas="$(jq '.status.replicas' <<<"$central_db_json")"
         ready_replicas="$(jq '.status.readyReplicas' <<<"$central_db_json")"
         curr_time="$(date '+%s')"
@@ -907,8 +914,8 @@ wait_for_central_db() {
 
         # Timeout case
         if (( elapsed_seconds > max_seconds )); then
-            kubectl -n stackrox get pod -o wide
-            kubectl -n stackrox get deploy -o wide
+            kubectl -n "$CENTRAL_NAMESPACE" get pod -o wide
+            kubectl -n "$CENTRAL_NAMESPACE" get deploy -o wide
             echo >&2 "wait_for_central_db() timeout after $max_seconds seconds."
             exit 1
         fi
@@ -926,7 +933,7 @@ wait_for_object_to_appear() {
         die "missing args. usage: wait_for_object_to_appear <namespace> <object> [<delay>]"
     fi
 
-    local namespace="$1"
+    local ="$1"
     local object="$2"
     local delay="${3:-300}"
     local waitInterval=20
