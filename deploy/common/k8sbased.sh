@@ -119,7 +119,7 @@ function yes_no_prompt() {
 
 function launch_central {
     local k8s_dir="$1"
-    local namespace=${2:-$CENTRAL_NAMESPACE}
+    local namespace=$CENTRAL_NAMESPACE
 
     local common_dir="${k8s_dir}/../common"
 
@@ -504,7 +504,7 @@ function launch_central {
 
 function launch_sensor {
     local k8s_dir="$1"
-    local namespace=${2:-$SENSOR_NAMESPACE}
+    local namespace=$SENSOR_NAMESPACE
     local common_dir="${k8s_dir}/../common"
 
     local extra_config=()
@@ -561,7 +561,7 @@ function launch_sensor {
     fi
 
     if [[ "${SENSOR_HELM_DEPLOY:-}" == "true" ]]; then
-      echo "Installing sensor into namespace $SENSOR_NAMESPACE"
+      echo "Installing sensor into namespace $namespace"
       mkdir "$k8s_dir/sensor-deploy"
       touch "$k8s_dir/sensor-deploy/init-bundle.yaml"
       chmod 0600 "$k8s_dir/sensor-deploy/init-bundle.yaml"
@@ -594,7 +594,7 @@ function launch_sensor {
       if [[ -f "$k8s_dir/sensor-deploy/chart/feature-flag-values.yaml" ]]; then
         helm_args+=(-f "$k8s_dir/sensor-deploy/chart/feature-flag-values.yaml")
       fi
-      if [[ "$SENSOR_NAMESPACE" != "stackrox" ]]; then
+      if [[ "$namespace" != "stackrox" ]]; then
         helm_args+=(--set "allowNonstandardNamespace=true")
       fi
 
@@ -627,12 +627,12 @@ function launch_sensor {
         helm lint "${helm_chart}" -n "$namespace" "${helm_args[@]}" "${extra_helm_config[@]}"
       fi
 
-      if [[ "$SENSOR_NAMESPACE" != "stackrox" ]]; then
-        kubectl create namespace "$SENSOR_NAMESPACE" &>/dev/null || true
-        kubectl -n "$SENSOR_NAMESPACE" get secret stackrox &>/dev/null || kubectl -n "$SENSOR_NAMESPACE" create -f - < <("${common_dir}/pull-secret.sh" stackrox docker.io)
+      if [[ "$namespace" != "stackrox" ]]; then
+        kubectl create namespace "$namespace" &>/dev/null || true
+        kubectl -n "$namespace" get secret stackrox &>/dev/null || kubectl -n "$SENSOR_NAMESPACE" create -f - < <("${common_dir}/pull-secret.sh" stackrox docker.io)
       fi
 
-      helm upgrade --install -n "$SENSOR_NAMESPACE" --create-namespace stackrox-secured-cluster-services "$helm_chart" \
+      helm upgrade --install -n "$namespace" --create-namespace stackrox-secured-cluster-services "$helm_chart" \
           "${helm_args[@]}" "${extra_helm_config[@]}"
     else
       echo "Installing sensor into namespace $namespace"
@@ -679,7 +679,7 @@ function launch_sensor {
     fi
 
     if [[ "$MONITORING_SUPPORT" == "true" || ( "$(local_dev)" != "true" && -z "$MONITORING_SUPPORT" ) ]]; then
-      "${COMMON_DIR}/monitoring.sh" "$namespace"
+      "${COMMON_DIR}/monitoring.sh"
     fi
 
     # If deploying with chaos proxy enabled, patch sensor to add toxiproxy proxy deployment
