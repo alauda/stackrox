@@ -295,8 +295,8 @@ function launch_central {
 
     echo "Deploying Central..."
 
-    ${KUBE_COMMAND:-kubectl} get "$namespace" "${STACKROX_NAMESPACE}" &>/dev/null || \
-      ${KUBE_COMMAND:-kubectl} create "$namespace" "${STACKROX_NAMESPACE}"
+    ${KUBE_COMMAND:-kubectl} get namespace "$namespace" &>/dev/null || \
+      ${KUBE_COMMAND:-kubectl} create namespace "$namespace"
 
     if [[ -f "$unzip_dir/values-public.yaml" ]]; then
       if [[ -n "${REGISTRY_USERNAME}" ]]; then
@@ -435,7 +435,7 @@ function launch_central {
     fi
 
     if [[ -n "${ROX_DEV_INTERNAL_SSO_CLIENT_SECRET}" ]]; then
-        ${KUBE_COMMAND:-kubectl} create secret generic sensitive-declarative-configurations -n "${STACKROX_NAMESPACE}" &>/dev/null
+        ${KUBE_COMMAND:-kubectl} -n "$namespace" create secret generic sensitive-declarative-configurations &>/dev/null
         setup_internal_sso "${API_ENDPOINT}" "${ROX_DEV_INTERNAL_SSO_CLIENT_SECRET}"
     fi
 
