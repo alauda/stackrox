@@ -203,7 +203,8 @@ deploy_central() {
 }
 
 deploy_central_via_operator() {
-    info "Deploying central via operator"
+    local namespace="$CENTRAL_NAMESPACE"
+    info "Deploying central via operator into namespae $namespace"
 
     make -C operator stackrox-image-pull-secret
 
@@ -261,13 +262,14 @@ deploy_central_via_operator() {
       central_exposure_route_enabled="$central_exposure_route_enabled" \
       customize_envVars="$customize_envVars" \
     envsubst \
-      < "${CENTRAL_YAML_PATH}" | kubectl apply -n stackrox -f -
+      < "${CENTRAL_YAML_PATH}" | kubectl apply -n "$namespace" -f -
 
-    wait_for_object_to_appear stackrox deploy/central 300
+    wait_for_object_to_appear "$namespace" deploy/central 300
 }
 
 deploy_sensor() {
-    info "Deploying sensor"
+    local namespace=$SENSOR_NAMESPACE
+    info "Deploying sensor into namespace $namespace"
 
     ci_export ROX_AFTERGLOW_PERIOD "15"
 
@@ -296,19 +298,20 @@ deploy_sensor() {
         # https://stack-rox.atlassian.net/browse/ROX-5334
         # https://stack-rox.atlassian.net/browse/ROX-6891
         # et al.
-        kubectl -n "$SENSOR_NAMESPACE" set resources deploy/sensor -c sensor --requests 'cpu=2' --limits 'cpu=4'
+        kubectl -n "$namespace" set resources deploy/sensor -c sensor --requests 'cpu=2' --limits 'cpu=4'
     fi
 }
 
 deploy_sensor_via_operator() {
-    info "Deploying sensor via operator"
+    local namespace=$SENSOR_NAMESPACE
+    info "Deploying sensor via operator into namespace $namespace"
 
-    kubectl -n "$CENTRAL_NAMESPACE" exec deploy/central -- \
+    kubectl -n "$namespace" exec deploy/central -- \
     roxctl central init-bundles generate my-test-bundle \
         --insecure-skip-tls-verify \
         --password "$ROX_PASSWORD" \
         --output-secrets - \
-    | kubectl -n "$SENSOR_NAMESPACE" apply -f -
+    | kubectl -n "$namespace" apply -f -
 
     if [[ -n "${COLLECTION_METHOD:-}" ]]; then
        echo "Overriding the product default collection method due to COLLECTION_METHOD variable: ${COLLECTION_METHOD}"
@@ -322,16 +325,16 @@ deploy_sensor_via_operator() {
     envsubst \
       < tests/e2e/yaml/secured-cluster-cr.envsubst.yaml | kubectl apply -n stackrox -f -
 
-    wait_for_object_to_appear stackrox deploy/sensor 300
-    wait_for_object_to_appear stackrox ds/collector 300
+    wait_for_object_to_appear "$namespace" deploy/sensor 300
+    wait_for_object_to_appear "$namespace" ds/collector 300
 
     if [[ -n "${ROX_AFTERGLOW_PERIOD:-}" ]]; then
-       kubectl -n stackrox set env ds/collector ROX_AFTERGLOW_PERIOD="${ROX_AFTERGLOW_PERIOD}"
+       kubectl -n "$namespace" set env ds/collector ROX_AFTERGLOW_PERIOD="${ROX_AFTERGLOW_PERIOD}"
     fi
 
     if [[ -n "${ROX_PROCESSES_LISTENING_ON_PORT:-}" ]]; then
-       kubectl -n stackrox set env deployment/sensor ROX_PROCESSES_LISTENING_ON_PORT="${ROX_PROCESSES_LISTENING_ON_PORT}"
-       kubectl -n stackrox set env ds/collector ROX_PROCESSES_LISTENING_ON_PORT="${ROX_PROCESSES_LISTENING_ON_PORT}"
+       kubectl -n "$namespace" set env deployment/sensor ROX_PROCESSES_LISTENING_ON_PORT="${ROX_PROCESSES_LISTENING_ON_PORT}"
+       kubectl -n "$namespace" set env ds/collector ROX_PROCESSES_LISTENING_ON_PORT="${ROX_PROCESSES_LISTENING_ON_PORT}"
     fi
 }
 
@@ -461,13 +464,14 @@ wait_for_collectors_to_be_operational() {
 }
 
 patch_resources_for_test() {
+    local namespace="$CENTRAL_NAMESPACE"
     info "Patch the loadbalancer and netpol resources for endpoints test"
 
     require_environment "TEST_ROOT"
     require_environment "API_HOSTNAME"
 
-    kubectl -n "$CENTRAL_NAMESPACE" patch svc central-loadbalancer --patch "$(cat "$TEST_ROOT"/tests/e2e/yaml/endpoints-test-lb-patch.yaml)"
-    kubectl -n "$CENTRAL_NAMESPACE" apply -f "$TEST_ROOT/tests/e2e/yaml/endpoints-test-netpol.yaml"
+    kubectl -n "$namespace" patch svc central-loadbalancer --patch "$(cat "$TEST_ROOT"/tests/e2e/yaml/endpoints-test-lb-patch.yaml)"
+    kubectl -n "$namespace" apply -f "$TEST_ROOT/tests/e2e/yaml/endpoints-test-netpol.yaml"
 
     for target_port in 8080 8081 8082 8443 8444 8445 8446 8447 8448; do
         check_endpoint_availability "$target_port"
@@ -641,13 +645,14 @@ remove_existing_stackrox_resources() {
 }
 
 wait_for_api() {
-    info "Waiting for Central to be ready"
+    local namespace="$CENTRAL_NAMESPACE"
+    info "Waiting for Central to be ready in namespace $namespace"
 
     start_time="$(date '+%s')"
     max_seconds=${MAX_WAIT_SECONDS:-300}
 
     while true; do
-        central_json="$(kubectl -n "$CENTRAL_NAMESPACE" get deploy/central -o json)"
+        central_json="$(kubectl -n "$namespace" get deploy/central -o json)"
         replicas="$(jq '.status.replicas' <<<"$central_json")"
         ready_replicas="$(jq '.status.readyReplicas' <<<"$central_json")"
         curr_time="$(date '+%s')"
@@ -661,8 +666,8 @@ wait_for_api() {
 
         # Timeout case
         if (( elapsed_seconds > max_seconds )); then
-            kubectl -n "$CENTRAL_NAMESPACE" get pod -o wide
-            kubectl -n "$CENTRAL_NAMESPACE" get deploy -o wide
+            kubectl -n "$namespace" get pod -o wide
+            kubectl -n "$namespace" get deploy -o wide
             echo >&2 "wait_for_api() timeout after $max_seconds seconds."
             exit 1
         fi
@@ -676,7 +681,7 @@ wait_for_api() {
     info "Waiting for Central API endpoint"
 
     if [[ "${USE_MIDSTREAM_IMAGES}" == "true" ]]; then
-        API_HOSTNAME=$(kubectl get routes/central -n "$CENTRAL_NAMESPACE" -o json | jq -r '.spec.host')
+        API_HOSTNAME=$(kubectl -n "$namespace" get routes/central -o json | jq -r '.spec.host')
         API_PORT=443
     else
         API_HOSTNAME=localhost
@@ -718,7 +723,7 @@ wait_for_api() {
         info "port-forwards:"
         pgrep port-forward
         info "pods:"
-        kubectl -n "$CENTRAL_NAMESPACE" get pod
+        kubectl -n "$namespace" get pod
         exit 1
     fi
     set -e
@@ -895,13 +900,14 @@ setup_automation_flavor_e2e_cluster() {
 # identify the source of pull/scheduling latency, request throttling, etc.
 # I tried increasing the timeout from 5m to 20m for OSD but it did not help.
 wait_for_central_db() {
-    info "Waiting for Central DB to start"
+    local namespace="$CENTRAL_NAMESPACE"
+    info "Waiting for Central DB to start in namespace $namespace"
 
     start_time="$(date '+%s')"
     max_seconds=300
 
     while true; do
-        central_db_json="$(kubectl -n "$CENTRAL_NAMESPACE" get deploy/central-db -o json)"
+        central_db_json="$(kubectl -n "$namespace" get deploy/central-db -o json)"
         replicas="$(jq '.status.replicas' <<<"$central_db_json")"
         ready_replicas="$(jq '.status.readyReplicas' <<<"$central_db_json")"
         curr_time="$(date '+%s')"
@@ -915,8 +921,8 @@ wait_for_central_db() {
 
         # Timeout case
         if (( elapsed_seconds > max_seconds )); then
-            kubectl -n "$CENTRAL_NAMESPACE" get pod -o wide
-            kubectl -n "$CENTRAL_NAMESPACE" get deploy -o wide
+            kubectl -n "$namespace" get pod -o wide
+            kubectl -n "$namespace" get deploy -o wide
             echo >&2 "wait_for_central_db() timeout after $max_seconds seconds."
             exit 1
         fi
@@ -934,7 +940,7 @@ wait_for_object_to_appear() {
         die "missing args. usage: wait_for_object_to_appear <namespace> <object> [<delay>]"
     fi
 
-    local ="$1"
+    local namespace="$1"
     local object="$2"
     local delay="${3:-300}"
     local waitInterval=20
