@@ -30,6 +30,7 @@ func TestClientManager(t *testing.T) {
 		storageClientHandler:        mockStorageHandler,
 		securityCenterClientHandler: mockSecurityCenterHandler,
 		registryClientHandler:       mockRegistryHandler,
+		stopCh:                      make(chan struct{}),
 	}
 	manager.updateClients()
 }

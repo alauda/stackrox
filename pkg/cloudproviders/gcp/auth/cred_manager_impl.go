@@ -105,6 +105,7 @@ func (c *gcpCredentialsManagerImpl) GetCredentials(ctx context.Context) (*google
 		// Use a scope to request access to the GCP API. See
 		// https://developers.google.com/identity/protocols/oauth2/scopes
 		// for a list of GCP scopes.
+		// TODO: clean up scope
 		return google.CredentialsFromJSON(ctx, c.stsConfig, storagev1.CloudPlatformScope)
 	}
 	return google.FindDefaultCredentials(ctx, storagev1.CloudPlatformScope)

@@ -19,6 +19,7 @@ type stsClientManagerImpl struct {
 	storageClientHandler        handler.Handler[*storage.Client]
 	securityCenterClientHandler handler.Handler[*securitycenter.Client]
 	registryClientHandler       handler.Handler[*registry.Client]
+	stopCh                      chan struct{}
 }
 
 var _ STSClientManager = &stsClientManagerImpl{}
@@ -28,6 +29,7 @@ func fallbackSTSClientManager() STSClientManager {
 		credManager:                 &defaultCredentialsManager{},
 		storageClientHandler:        handler.NewHandlerNoInit[*storage.Client](),
 		securityCenterClientHandler: handler.NewHandlerNoInit[*securitycenter.Client](),
+		stopCh:                      make(chan struct{}),
 	}
 	mgr.updateClients()
 	return mgr
@@ -49,6 +51,7 @@ func NewSTSClientManager(namespace string, secretName string) STSClientManager {
 		storageClientHandler:        handler.NewHandlerNoInit[*storage.Client](),
 		securityCenterClientHandler: handler.NewHandlerNoInit[*securitycenter.Client](),
 		registryClientHandler:       handler.NewHandlerNoInit[*registry.Client](),
+		stopCh:                      make(chan struct{}),
 	}
 	mgr.credManager = newCredentialsManagerImpl(k8sClient, namespace, secretName, mgr.updateClients)
 	mgr.updateClients()
@@ -57,10 +60,27 @@ func NewSTSClientManager(namespace string, secretName string) STSClientManager {
 
 func (c *stsClientManagerImpl) Start() {
 	c.credManager.Start()
+	go c.refresh()
 }
 
 func (c *stsClientManagerImpl) Stop() {
+	close(c.stopCh)
 	c.credManager.Stop()
+}
+
+func (c *stsClientManagerImpl) refresh() {
+	ticker := time.NewTicker(5 * time.Minute)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				c.updateClients()
+			case <-c.stopCh:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 }
 
 func (c *stsClientManagerImpl) updateClients() {

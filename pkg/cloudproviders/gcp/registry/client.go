@@ -63,6 +63,7 @@ func (c *Client) refreshToken() error {
 	if c.token.Expiry.After(time.Now()) {
 		return nil
 	}
+	// TODO: use https://pkg.go.dev/golang.org/x/oauth2#ReuseTokenSource here.
 	token, err := c.creds.TokenSource.Token()
 	if err != nil {
 		return errors.Wrap(err, "failed to get token")
