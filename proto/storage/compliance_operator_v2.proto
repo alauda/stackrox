@@ -43,7 +43,7 @@ message ComplianceOperatorProfileV2 {
     // The primary key is name-profile_version as that is guaranteed unique in the operator and how
     // the profile is referenced in scans and settings
     string              id               = 1 [(gogoproto.moretags) = 'sql:"pk"'];
-    string              profile_id       = 2;
+    string              profile_id       = 2 [(gogoproto.moretags) = 'search:"Compliance Profile ID,hidden,store"'];
     string              name             = 3 [(gogoproto.moretags) = 'search:"Compliance Profile Name,hidden,store" sql:"index=category:unique;name:profile_unique_indicator"'];
     string              profile_version  = 4 [(gogoproto.moretags) = 'search:"Compliance Profile Version,hidden,store" sql:"index=category:unique;name:profile_unique_indicator"'];
     string              product_type     = 5 [(gogoproto.moretags) = 'search:"Compliance Profile Product Type,hidden,store"'];
@@ -151,7 +151,7 @@ message ScanStatus {
 // Scan object per cluster
 message ComplianceOperatorScanV2 {
     string                     id                 = 1 [(gogoproto.moretags) = 'sql:"pk"'];
-    string                     scan_config_id     = 2 [(gogoproto.moretags) = 'search:"-" sql:"fk(ComplianceOperatorScanConfigurationV2:id),no-fk-constraint,type(uuid)"'];
+    string                     scan_config_name   = 2 [(gogoproto.moretags) = 'search:"Compliance Scan Name,store" sql:"fk(ComplianceOperatorScanConfigurationV2:scan_name),no-fk-constraint"'];
     string                     scan_name          = 14;
     string                     cluster_id         = 3 [(gogoproto.moretags) = 'search:"Cluster ID,hidden,store" sql:"fk(Cluster:id),no-fk-constraint,type(uuid),index=category:unique;name:scan_unique_indicator"'];
     string                     cluster_name       = 13;

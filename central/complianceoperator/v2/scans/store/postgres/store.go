@@ -91,13 +91,13 @@ func insertIntoComplianceOperatorScanV2(batch *pgx.Batch, obj *storage.Complianc
 	values := []interface{}{
 		// parent primary keys start
 		obj.GetId(),
-		pgutils.NilOrUUID(obj.GetScanConfigId()),
+		obj.GetScanConfigName(),
 		pgutils.NilOrUUID(obj.GetClusterId()),
 		pgutils.NilOrTime(obj.GetLastExecutedTime()),
 		serialized,
 	}
 
-	finalStr := "INSERT INTO compliance_operator_scan_v2 (Id, ScanConfigId, ClusterId, LastExecutedTime, serialized) VALUES($1, $2, $3, $4, $5) ON CONFLICT(Id) DO UPDATE SET Id = EXCLUDED.Id, ScanConfigId = EXCLUDED.ScanConfigId, ClusterId = EXCLUDED.ClusterId, LastExecutedTime = EXCLUDED.LastExecutedTime, serialized = EXCLUDED.serialized"
+	finalStr := "INSERT INTO compliance_operator_scan_v2 (Id, ScanConfigName, ClusterId, LastExecutedTime, serialized) VALUES($1, $2, $3, $4, $5) ON CONFLICT(Id) DO UPDATE SET Id = EXCLUDED.Id, ScanConfigName = EXCLUDED.ScanConfigName, ClusterId = EXCLUDED.ClusterId, LastExecutedTime = EXCLUDED.LastExecutedTime, serialized = EXCLUDED.serialized"
 	batch.Queue(finalStr, values...)
 
 	var query string
@@ -141,7 +141,7 @@ func copyFromComplianceOperatorScanV2(ctx context.Context, s pgSearch.Deleter, t
 
 	copyCols := []string{
 		"id",
-		"scanconfigid",
+		"scanconfigname",
 		"clusterid",
 		"lastexecutedtime",
 		"serialized",
@@ -160,7 +160,7 @@ func copyFromComplianceOperatorScanV2(ctx context.Context, s pgSearch.Deleter, t
 
 		inputRows = append(inputRows, []interface{}{
 			obj.GetId(),
-			pgutils.NilOrUUID(obj.GetScanConfigId()),
+			obj.GetScanConfigName(),
 			pgutils.NilOrUUID(obj.GetClusterId()),
 			pgutils.NilOrTime(obj.GetLastExecutedTime()),
 			serialized,

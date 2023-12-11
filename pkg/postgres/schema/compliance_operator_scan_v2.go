@@ -63,7 +63,7 @@ const (
 // ComplianceOperatorScanV2 holds the Gorm model for Postgres table `compliance_operator_scan_v2`.
 type ComplianceOperatorScanV2 struct {
 	ID               string     `gorm:"column:id;type:varchar;primaryKey"`
-	ScanConfigID     string     `gorm:"column:scanconfigid;type:uuid"`
+	ScanConfigName   string     `gorm:"column:scanconfigname;type:varchar"`
 	ClusterID        string     `gorm:"column:clusterid;type:uuid;uniqueIndex:scan_unique_indicator;index:complianceoperatorscanv2_sac_filter,type:btree"`
 	LastExecutedTime *time.Time `gorm:"column:lastexecutedtime;type:timestamp"`
 	Serialized       []byte     `gorm:"column:serialized;type:bytea"`

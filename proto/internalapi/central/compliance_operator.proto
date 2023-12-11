@@ -187,3 +187,15 @@ message ComplianceOperatorRuleV2 {
     string                         rationale    = 10;
     string                         fixes        = 11;
 }
+
+message ComplianceOperatorScanV2 {
+    string                     id          = 1;
+    string                     name        = 2;
+    string                     profile_id  = 3;
+    map<string, string>        labels      = 4;
+    map<string, string>        annotations = 5;
+    string                     scan_type   = 6;
+    string                     result      = 7;
+    google.protobuf.Timestamp  start_time  = 8;
+    google.protobuf.Timestamp  end_time    = 9;
+}
