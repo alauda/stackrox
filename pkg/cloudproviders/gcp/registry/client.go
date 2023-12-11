@@ -44,7 +44,7 @@ func NewClient(ts oauth2.TokenSource) (*Client, error) {
 }
 
 // NewTestClient creates a new test registry client.
-func NewTestClient(t *testing.T) *Client {
+func NewTestClient(_ *testing.T) *Client {
 	return &Client{}
 }
 

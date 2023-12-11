@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stackrox/rox/central/cloudproviders/gcp"
 	"github.com/stackrox/rox/generated/storage"
-	gcpHandler "github.com/stackrox/rox/pkg/cloudproviders/gcp/handler"
 	gcpRegistry "github.com/stackrox/rox/pkg/cloudproviders/gcp/registry"
 	"github.com/stackrox/rox/pkg/cloudproviders/gcp/utils"
 	"github.com/stackrox/rox/pkg/errorhelpers"
@@ -30,7 +29,7 @@ type googleRegistry struct {
 
 	config          *storage.GoogleConfig
 	integration     *storage.ImageIntegration
-	clientHandler   gcpHandler.Handler[*gcpRegistry.Client]
+	client          *gcpRegistry.Client
 	mutex           sync.RWMutex
 	project         string
 	disableRepoList bool
@@ -53,9 +52,7 @@ func (g *googleRegistry) Match(image *storage.ImageName) bool {
 	if stringutils.GetUpTo(image.GetRemote(), "/") != g.project {
 		return false
 	}
-	client, done := g.clientHandler.GetClient()
-	defer done()
-	if err := g.updateDockerRegistry(client.DockerCredentials()); err != nil {
+	if err := g.updateDockerRegistry(g.client.DockerCredentials()); err != nil {
 		log.Error("Failed to update registry: ", err)
 	}
 	g.mutex.RLock()
@@ -65,9 +62,7 @@ func (g *googleRegistry) Match(image *storage.ImageName) bool {
 
 // Metadata returns the metadata via this registry's implementation.
 func (g *googleRegistry) Metadata(image *storage.Image) (*storage.ImageMetadata, error) {
-	client, done := g.clientHandler.GetClient()
-	defer done()
-	if err := g.updateDockerRegistry(client.DockerCredentials()); err != nil {
+	if err := g.updateDockerRegistry(g.client.DockerCredentials()); err != nil {
 		return nil, errors.Wrap(err, "failed to update registry")
 	}
 	g.mutex.RLock()
@@ -77,9 +72,7 @@ func (g *googleRegistry) Metadata(image *storage.Image) (*storage.ImageMetadata,
 
 // Config returns the config via this registry's implementation.
 func (g *googleRegistry) Config() *types.Config {
-	client, done := g.clientHandler.GetClient()
-	defer done()
-	if err := g.updateDockerRegistry(client.DockerCredentials()); err != nil {
+	if err := g.updateDockerRegistry(g.client.DockerCredentials()); err != nil {
 		log.Error("Failed to update registry: ", err)
 	}
 	g.mutex.RLock()
@@ -90,9 +83,7 @@ func (g *googleRegistry) Config() *types.Config {
 // HTTPClient returns the *http.Client used to contact the registry.
 // TODO: fix race condition
 func (g *googleRegistry) HTTPClient() *http.Client {
-	client, done := g.clientHandler.GetClient()
-	defer done()
-	if err := g.updateDockerRegistry(client.DockerCredentials()); err != nil {
+	if err := g.updateDockerRegistry(g.client.DockerCredentials()); err != nil {
 		log.Error("Failed to update registry: ", err)
 	}
 	g.mutex.RLock()
@@ -102,9 +93,7 @@ func (g *googleRegistry) HTTPClient() *http.Client {
 
 // Test tests the current registry and makes sure that it is working properly
 func (g *googleRegistry) Test() error {
-	client, done := g.clientHandler.GetClient()
-	defer done()
-	if err := g.updateDockerRegistry(client.DockerCredentials()); err != nil {
+	if err := g.updateDockerRegistry(g.client.DockerCredentials()); err != nil {
 		return errors.Wrap(err, "failed to update registry")
 	}
 
@@ -149,35 +138,33 @@ func NewRegistry(integration *storage.ImageIntegration, disableRepoList bool) (*
 	}
 
 	var (
-		handler gcpHandler.Handler[*gcpRegistry.Client]
-		err     error
+		client *gcpRegistry.Client
+		err    error
 	)
 	if features.CloudCredentials.Enabled() {
-		handler, err = utils.CreateRegistryHandlerFromConfigWithManager(
+		client, err = utils.CreateRegistryClientFromConfigWithManager(
 			context.Background(),
 			gcp.Singleton(),
 			[]byte(config.GetServiceAccount()),
 			config.GetWifEnabled(),
 		)
 	} else {
-		handler, err = utils.CreateRegistryHandlerFromConfig(
+		client, err = utils.CreateRegistryClientFromConfig(
 			context.Background(),
 			[]byte(config.GetServiceAccount()),
 			config.GetWifEnabled(),
 		)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create Google registry client handler")
+		return nil, errors.Wrap(err, "could not create Google registry client")
 	}
 	reg := &googleRegistry{
 		config:          config,
 		integration:     integration,
-		clientHandler:   handler,
+		client:          client,
 		project:         strings.ToLower(config.GetProject()),
 		disableRepoList: disableRepoList,
 	}
-	client, done := reg.clientHandler.GetClient()
-	defer done()
 	if err := reg.updateDockerRegistry(client.DockerCredentials()); err != nil {
 		return nil, errors.Wrap(err, "failed to update registry")
 	}

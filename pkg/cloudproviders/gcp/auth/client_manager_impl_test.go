@@ -3,11 +3,7 @@ package auth
 import (
 	"testing"
 
-	securitycenter "cloud.google.com/go/securitycenter/apiv1"
-	"cloud.google.com/go/storage"
 	authMocks "github.com/stackrox/rox/pkg/cloudproviders/gcp/auth/mocks"
-	handlerMocks "github.com/stackrox/rox/pkg/cloudproviders/gcp/handler/mocks"
-	"github.com/stackrox/rox/pkg/cloudproviders/gcp/registry"
 	"go.uber.org/mock/gomock"
 )
 
@@ -18,19 +14,9 @@ func TestClientManager(t *testing.T) {
 
 	mockCredManager := authMocks.NewMockCredentialsManager(controller)
 	mockCredManager.EXPECT().GetCredentials(gomock.Any()).Return(nil, nil)
-	mockStorageHandler := handlerMocks.NewMockHandler[*storage.Client](controller)
-	mockStorageHandler.EXPECT().UpdateClient(gomock.Any(), gomock.Any()).Return(nil)
-	mockSecurityCenterHandler := handlerMocks.NewMockHandler[*securitycenter.Client](controller)
-	mockSecurityCenterHandler.EXPECT().UpdateClient(gomock.Any(), gomock.Any()).Return(nil)
-	mockRegistryHandler := handlerMocks.NewMockHandler[*registry.Client](controller)
-	mockRegistryHandler.EXPECT().UpdateClient(gomock.Any(), gomock.Any()).Return(nil)
 
 	manager := &stsClientManagerImpl{
-		credManager:                 mockCredManager,
-		storageClientHandler:        mockStorageHandler,
-		securityCenterClientHandler: mockSecurityCenterHandler,
-		registryClientHandler:       mockRegistryHandler,
-		stopCh:                      make(chan struct{}),
+		credManager: mockCredManager,
 	}
-	manager.updateClients()
+	manager.expireToken()
 }

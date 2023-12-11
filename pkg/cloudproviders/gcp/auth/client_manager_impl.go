@@ -1,13 +1,8 @@
 package auth
 
 import (
-	"context"
 	"time"
 
-	securitycenter "cloud.google.com/go/securitycenter/apiv1"
-	"cloud.google.com/go/storage"
-	"github.com/stackrox/rox/pkg/cloudproviders/gcp/handler"
-	"github.com/stackrox/rox/pkg/cloudproviders/gcp/registry"
 	"github.com/stackrox/rox/pkg/k8sutil"
 	"golang.org/x/oauth2"
 	"k8s.io/client-go/kubernetes"
@@ -16,23 +11,18 @@ import (
 const updateTimeout = 1 * time.Hour
 
 type stsClientManagerImpl struct {
-	credManager                 CredentialsManager
-	storageClientHandler        handler.Handler[*storage.Client]
-	securityCenterClientHandler handler.Handler[*securitycenter.Client]
-	registryClientHandler       handler.Handler[*registry.Client]
-	stopCh                      chan struct{}
+	credManager CredentialsManager
+	tokenSource *ReuseTokenSourceWithExpiry
 }
 
 var _ STSClientManager = &stsClientManagerImpl{}
 
 func fallbackSTSClientManager() STSClientManager {
+	credManager := &defaultCredentialsManager{}
 	mgr := &stsClientManagerImpl{
-		credManager:                 &defaultCredentialsManager{},
-		storageClientHandler:        handler.NewHandlerNoInit[*storage.Client](),
-		securityCenterClientHandler: handler.NewHandlerNoInit[*securitycenter.Client](),
-		stopCh:                      make(chan struct{}),
+		credManager: credManager,
+		tokenSource: &ReuseTokenSourceWithExpiry{base: &CredentialManagerTokenSource{credManager}},
 	}
-	mgr.updateClients()
 	return mgr
 }
 
@@ -48,66 +38,24 @@ func NewSTSClientManager(namespace string, secretName string) STSClientManager {
 		log.Error("Could not create GCP credentials manager. Continuing with default credentials chain: ", err)
 		return fallbackSTSClientManager()
 	}
-	mgr := &stsClientManagerImpl{
-		storageClientHandler:        handler.NewHandlerNoInit[*storage.Client](),
-		securityCenterClientHandler: handler.NewHandlerNoInit[*securitycenter.Client](),
-		registryClientHandler:       handler.NewHandlerNoInit[*registry.Client](),
-		stopCh:                      make(chan struct{}),
-	}
-	mgr.credManager = newCredentialsManagerImpl(k8sClient, namespace, secretName, mgr.updateClients)
-	mgr.updateClients()
+	mgr := &stsClientManagerImpl{}
+	mgr.credManager = newCredentialsManagerImpl(k8sClient, namespace, secretName, mgr.expireToken)
+	mgr.tokenSource = &ReuseTokenSourceWithExpiry{base: &CredentialManagerTokenSource{mgr.credManager}}
 	return mgr
 }
 
 func (c *stsClientManagerImpl) Start() {
 	c.credManager.Start()
-	// go c.refresh()
 }
 
 func (c *stsClientManagerImpl) Stop() {
-	close(c.stopCh)
 	c.credManager.Stop()
 }
 
-func (c *stsClientManagerImpl) refresh() {
-	ticker := time.NewTicker(5 * time.Minute)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				c.updateClients()
-			case <-c.stopCh:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+func (c *stsClientManagerImpl) TokenSource() oauth2.TokenSource {
+	return c.tokenSource
 }
 
-func (c *stsClientManagerImpl) updateClients() {
-	ctx, cancel := context.WithTimeout(context.Background(), updateTimeout)
-	defer cancel()
-
-	ts := oauth2.ReuseTokenSource(nil, &TokenSource{c.credManager})
-	if err := c.storageClientHandler.UpdateClient(ctx, ts); err != nil {
-		log.Error("Failed to update GCP storage client: ", err)
-	}
-	if err := c.securityCenterClientHandler.UpdateClient(ctx, ts); err != nil {
-		log.Error("Failed to update GCP security center client: ", err)
-	}
-	if err := c.registryClientHandler.UpdateClient(ctx, ts); err != nil {
-		log.Error("Failed to update GCP registry client: ", err)
-	}
-}
-
-func (c *stsClientManagerImpl) StorageClientHandler() handler.Handler[*storage.Client] {
-	return c.storageClientHandler
-}
-
-func (c *stsClientManagerImpl) SecurityCenterClientHandler() handler.Handler[*securitycenter.Client] {
-	return c.securityCenterClientHandler
-}
-
-func (c *stsClientManagerImpl) RegistryClientHandler() handler.Handler[*registry.Client] {
-	return c.registryClientHandler
+func (c *stsClientManagerImpl) expireToken() {
+	c.tokenSource.Expire()
 }
