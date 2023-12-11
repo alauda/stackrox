@@ -11,9 +11,18 @@ GIT_ROOT=$(git rev-parse --show-toplevel)
 # - jq
 # - openssl
 
-if ! kubectl -n stackrox get secrets central-tls; then
-    echo "Central CA not found. Running StackRox instance with provisioned Central CA cert required."
-    exit 1
+if [[ -z "UPDATE_CENTRAL_CA" ]]; then
+    if ! kubectl -n stackrox get secrets central-tls; then
+        echo "Central CA not found. Running StackRox instance with provisioned Central CA cert required."
+        exit 1
+    fi
+    # Receive new StackRox CA certificate from currently running instance. Safe it as testdata to be used in the test case.
+    centralTLS=$(kubectl -n stackrox get secret central-tls -o json)
+    files=("ca.pem" "ca-key.pem" "jwt-key.pem" "cert.pem" "key.pem")
+    for key in "${files[@]}"
+    do
+        echo "$centralTLS" | jq -r ".data[\"$key\"]" | base64 --decode > "$SCRIPT_DIR/central/central-$key"
+    done
 fi
 
 # Generate an new private key and CA certificate which is used as an additional CA in Central.
