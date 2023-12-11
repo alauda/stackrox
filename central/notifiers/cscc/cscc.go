@@ -77,9 +77,6 @@ func newCSCC(protoNotifier *storage.Notifier, cryptoCodec cryptocodec.CryptoCode
 	decCreds := conf.ServiceAccount
 	var err error
 	if env.EncNotifierCreds.BooleanSetting() {
-		if protoNotifier.GetNotifierSecret() == "" {
-			return nil, errors.Errorf("encrypted notifier credentials for notifier '%s' empty", protoNotifier.GetName())
-		}
 		decCreds, err = cryptoCodec.Decrypt(cryptoKey, protoNotifier.GetNotifierSecret())
 		if err != nil {
 			return nil, errors.Errorf("Error decrypting notifier secret for notifier '%s'", protoNotifier.GetName())
