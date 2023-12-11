@@ -14,7 +14,7 @@ import (
 
 	types "github.com/stackrox/rox/pkg/cloudproviders/gcp/types"
 	gomock "go.uber.org/mock/gomock"
-	google "golang.org/x/oauth2/google"
+	oauth2 "golang.org/x/oauth2"
 )
 
 // MockHandler is a mock of Handler interface.
@@ -56,15 +56,15 @@ func (mr *MockHandlerMockRecorder[T]) GetClient() *gomock.Call {
 }
 
 // UpdateClient mocks base method.
-func (m *MockHandler[T]) UpdateClient(ctx context.Context, creds *google.Credentials) error {
+func (m *MockHandler[T]) UpdateClient(ctx context.Context, ts oauth2.TokenSource) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateClient", ctx, creds)
+	ret := m.ctrl.Call(m, "UpdateClient", ctx, ts)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateClient indicates an expected call of UpdateClient.
-func (mr *MockHandlerMockRecorder[T]) UpdateClient(ctx, creds any) *gomock.Call {
+func (mr *MockHandlerMockRecorder[T]) UpdateClient(ctx, ts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateClient", reflect.TypeOf((*MockHandler[T])(nil).UpdateClient), ctx, creds)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateClient", reflect.TypeOf((*MockHandler[T])(nil).UpdateClient), ctx, ts)
 }

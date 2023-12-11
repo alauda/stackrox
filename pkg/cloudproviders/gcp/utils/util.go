@@ -93,7 +93,7 @@ func createStaticHandler[T types.GcpSDKClients](ctx context.Context,
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create credentials")
 	}
-	return handler.NewHandler[T](ctx, creds)
+	return handler.NewHandler[T](ctx, creds.TokenSource)
 }
 
 func createDefaultCredsHandler[T types.GcpSDKClients](ctx context.Context,
@@ -103,5 +103,5 @@ func createDefaultCredsHandler[T types.GcpSDKClients](ctx context.Context,
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create credentials")
 	}
-	return handler.NewHandler[T](ctx, creds)
+	return handler.NewHandler[T](ctx, creds.TokenSource)
 }

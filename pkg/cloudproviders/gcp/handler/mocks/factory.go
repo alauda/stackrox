@@ -14,7 +14,7 @@ import (
 
 	types "github.com/stackrox/rox/pkg/cloudproviders/gcp/types"
 	gomock "go.uber.org/mock/gomock"
-	google "golang.org/x/oauth2/google"
+	oauth2 "golang.org/x/oauth2"
 )
 
 // MockClientFactory is a mock of ClientFactory interface.
@@ -41,16 +41,16 @@ func (m *MockClientFactory[T]) EXPECT() *MockClientFactoryMockRecorder[T] {
 }
 
 // NewClient mocks base method.
-func (m *MockClientFactory[T]) NewClient(ctx context.Context, creds *google.Credentials) (T, error) {
+func (m *MockClientFactory[T]) NewClient(ctx context.Context, ts oauth2.TokenSource) (T, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewClient", ctx, creds)
+	ret := m.ctrl.Call(m, "NewClient", ctx, ts)
 	ret0, _ := ret[0].(T)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // NewClient indicates an expected call of NewClient.
-func (mr *MockClientFactoryMockRecorder[T]) NewClient(ctx, creds any) *gomock.Call {
+func (mr *MockClientFactoryMockRecorder[T]) NewClient(ctx, ts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewClient", reflect.TypeOf((*MockClientFactory[T])(nil).NewClient), ctx, creds)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewClient", reflect.TypeOf((*MockClientFactory[T])(nil).NewClient), ctx, ts)
 }

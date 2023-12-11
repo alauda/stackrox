@@ -9,6 +9,7 @@ import (
 	"github.com/stackrox/rox/pkg/cloudproviders/gcp/handler"
 	"github.com/stackrox/rox/pkg/cloudproviders/gcp/registry"
 	"github.com/stackrox/rox/pkg/k8sutil"
+	"golang.org/x/oauth2"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -60,7 +61,7 @@ func NewSTSClientManager(namespace string, secretName string) STSClientManager {
 
 func (c *stsClientManagerImpl) Start() {
 	c.credManager.Start()
-	go c.refresh()
+	// go c.refresh()
 }
 
 func (c *stsClientManagerImpl) Stop() {
@@ -86,19 +87,15 @@ func (c *stsClientManagerImpl) refresh() {
 func (c *stsClientManagerImpl) updateClients() {
 	ctx, cancel := context.WithTimeout(context.Background(), updateTimeout)
 	defer cancel()
-	creds, err := c.credManager.GetCredentials(ctx)
-	if err != nil {
-		log.Error("Failed to get GCP credentials: ", err)
-		return
-	}
 
-	if err := c.storageClientHandler.UpdateClient(ctx, creds); err != nil {
+	ts := oauth2.ReuseTokenSource(nil, &TokenSource{c.credManager})
+	if err := c.storageClientHandler.UpdateClient(ctx, ts); err != nil {
 		log.Error("Failed to update GCP storage client: ", err)
 	}
-	if err := c.securityCenterClientHandler.UpdateClient(ctx, creds); err != nil {
+	if err := c.securityCenterClientHandler.UpdateClient(ctx, ts); err != nil {
 		log.Error("Failed to update GCP security center client: ", err)
 	}
-	if err := c.registryClientHandler.UpdateClient(ctx, creds); err != nil {
+	if err := c.registryClientHandler.UpdateClient(ctx, ts); err != nil {
 		log.Error("Failed to update GCP registry client: ", err)
 	}
 }

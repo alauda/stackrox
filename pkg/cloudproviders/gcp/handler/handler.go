@@ -8,14 +8,14 @@ import (
 	"github.com/stackrox/rox/pkg/concurrency"
 	"github.com/stackrox/rox/pkg/sync"
 	"github.com/stackrox/rox/pkg/utils"
-	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2"
 )
 
 // Handler provides an abstraction for handling GCP SDK clients.
 //
 //go:generate mockgen-wrapper
 type Handler[T types.GcpSDKClients] interface {
-	UpdateClient(ctx context.Context, creds *google.Credentials) error
+	UpdateClient(ctx context.Context, ts oauth2.TokenSource) error
 	GetClient() (T, types.DoneFunc)
 }
 
@@ -26,14 +26,14 @@ type handlerImpl[T types.GcpSDKClients] struct {
 	factory ClientFactory[T]
 }
 
-func (h *handlerImpl[T]) UpdateClient(ctx context.Context, creds *google.Credentials) error {
+func (h *handlerImpl[T]) UpdateClient(ctx context.Context, ts oauth2.TokenSource) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 	if !concurrency.WaitInContext(h.wg, ctx) {
 		return ctx.Err()
 	}
 
-	client, err := h.factory.NewClient(ctx, creds)
+	client, err := h.factory.NewClient(ctx, ts)
 	if err != nil {
 		return errors.Wrap(err, "failed to create client")
 	}
@@ -57,14 +57,14 @@ func NewHandlerNoInit[T types.GcpSDKClients]() Handler[T] {
 }
 
 // NewHandler creates a handler initialized with the given credentials.
-func NewHandler[T types.GcpSDKClients](ctx context.Context, creds *google.Credentials) (Handler[T], error) {
+func NewHandler[T types.GcpSDKClients](ctx context.Context, ts oauth2.TokenSource) (Handler[T], error) {
 	wg := concurrency.NewWaitGroup(0)
 	factory, err := GetClientFactory(*new(T))
 	if err != nil {
 		return nil, errors.Wrap(err, "creating factory")
 	}
 	h := &handlerImpl[T]{factory: factory, wg: &wg}
-	if err := h.UpdateClient(ctx, creds); err != nil {
+	if err := h.UpdateClient(ctx, ts); err != nil {
 		return nil, errors.Wrap(err, "updating client")
 	}
 	return h, nil

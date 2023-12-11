@@ -9,7 +9,7 @@ import (
 	"github.com/stackrox/rox/pkg/cloudproviders/gcp/types"
 	"github.com/stackrox/rox/pkg/errox"
 	"github.com/stackrox/rox/pkg/httputil/proxy"
-	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 )
@@ -18,7 +18,7 @@ import (
 //
 //go:generate mockgen-wrapper
 type ClientFactory[T types.GcpSDKClients] interface {
-	NewClient(ctx context.Context, creds *google.Credentials) (T, error)
+	NewClient(ctx context.Context, ts oauth2.TokenSource) (T, error)
 }
 
 // GetClientFactory retrieves the ClientFactory for the given type.
@@ -36,8 +36,8 @@ func GetClientFactory[T types.GcpSDKClients](client T) (ClientFactory[T], error)
 
 type storageClientFactory[T types.GcpSDKClients] struct{}
 
-func (s *storageClientFactory[T]) NewClient(ctx context.Context, creds *google.Credentials) (T, error) {
-	client, err := storage.NewClient(ctx, option.WithCredentials(creds))
+func (s *storageClientFactory[T]) NewClient(ctx context.Context, ts oauth2.TokenSource) (T, error) {
+	client, err := storage.NewClient(ctx, option.WithTokenSource(ts))
 	if err != nil {
 		return *new(T), err
 	}
@@ -46,8 +46,8 @@ func (s *storageClientFactory[T]) NewClient(ctx context.Context, creds *google.C
 
 type securityCenterClientFactory[T types.GcpSDKClients] struct{}
 
-func (s *securityCenterClientFactory[T]) NewClient(ctx context.Context, creds *google.Credentials) (T, error) {
-	client, err := securitycenter.NewClient(ctx, option.WithCredentials(creds),
+func (s *securityCenterClientFactory[T]) NewClient(ctx context.Context, ts oauth2.TokenSource) (T, error) {
+	client, err := securitycenter.NewClient(ctx, option.WithTokenSource(ts),
 		option.WithGRPCDialOption(grpc.WithContextDialer(proxy.AwareDialContext)))
 	if err != nil {
 		return *new(T), err
@@ -57,8 +57,8 @@ func (s *securityCenterClientFactory[T]) NewClient(ctx context.Context, creds *g
 
 type registryClientFactory[T types.GcpSDKClients] struct{}
 
-func (s *registryClientFactory[T]) NewClient(_ context.Context, creds *google.Credentials) (T, error) {
-	client, err := registry.NewClient(creds)
+func (s *registryClientFactory[T]) NewClient(_ context.Context, ts oauth2.TokenSource) (T, error) {
+	client, err := registry.NewClient(ts)
 	if err != nil {
 		return *new(T), err
 	}
