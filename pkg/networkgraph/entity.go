@@ -88,6 +88,8 @@ func InternetEntity() Entity {
 	}
 }
 
+// LearnedExternalEntity returns an EXTERNAL_SOURCE entity refering to the provided network address.
+// It is marked as "Learned" to constrast with Entities defined from the user or the default ones.
 func LearnedExternalEntity(address net.IPNetwork) Entity {
 	id, err := externalsrcs.NewGlobalScopedScopedID(address.String())
 	utils.Should(errors.Wrapf(err, "generating id for network %s", address.String()))
