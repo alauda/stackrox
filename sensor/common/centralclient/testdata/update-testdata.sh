@@ -11,7 +11,7 @@ GIT_ROOT=$(git rev-parse --show-toplevel)
 # - jq
 # - openssl
 
-if [[ -z "UPDATE_CENTRAL_CA" ]]; then
+if [[ "$UPDATE_CENTRAL_CA" == "true" ]]; then
     if ! kubectl -n stackrox get secrets central-tls; then
         echo "Central CA not found. Running StackRox instance with provisioned Central CA cert required."
         exit 1
