@@ -313,9 +313,9 @@ splunk:
 
         // Verify the groups are created successfully, and specify the origin declarative.
         def expectedGroups = [VALID_DEFAULT_GROUP, VALID_DECLARATIVE_GROUP]
-        def foundGroups = verifyDeclarativeGroups(authProvider.getId(), expectedGroups)
-        assert foundGroups == expectedGroups.size() :
-                "expected to find ${expectedGroups.size()} groups, but only found ${foundGroups}"
+        def groupsResponse = GroupService.getGroups(
+                GroupServiceOuterClass.GetGroupsRequest.newBuilder().setAuthProviderId(authProvider.getId()).build())
+        assert expectedGroups == groupsResponse.getGroupsList()
 
         def notifier = verifyDeclarativeNotifier(VALID_NOTIFIER)
         assert notifier
@@ -812,29 +812,6 @@ splunk:
         assert accessScope.getRules() == expectedAccessScope.getRules()
         assert accessScope.getId()
         return accessScope
-    }
-
-    // verifyDeclarativeGroups will verify that the expected groups exist within the API and share the same
-    // values.
-    // The number of groups found within the list of expected groups will be returned.
-    private int verifyDeclarativeGroups(String authProviderID, List<Group> expectedGroups) {
-        def groupsResponse = GroupService.getGroups(
-                GroupServiceOuterClass.GetGroupsRequest.newBuilder().setAuthProviderId(authProviderID).build())
-        assert groupsResponse.getGroupsCount() == expectedGroups.size()
-
-        def foundGroups = 0
-        for (group in groupsResponse.getGroupsList()) {
-            for (expectedGroup in expectedGroups) {
-                if (group.getRoleName() == expectedGroup.getRoleName()) {
-                    foundGroups++
-                    assert group.getProps().getKey() == expectedGroup.getProps().getKey()
-                    assert group.getProps().getValue() == expectedGroup.getProps().getValue()
-                    assert group.getProps().getAuthProviderId() == authProviderID
-                    assert group.getProps().getTraits().getOrigin() == expectedGroup.getProps().getTraits().getOrigin()
-                }
-            }
-        }
-        return foundGroups
     }
 
     // verifyDeclarativeAuthProvider will verify that the expected auth provider exists within the API and
