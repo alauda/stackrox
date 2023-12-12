@@ -2,10 +2,28 @@ package manager
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/stackrox/rox/pkg/timestamp"
 )
+
+func updatedConnections2String(m map[connection]timestamp.MicroTS) string {
+	arr0 := make([]string, 0, len(m))
+	for c, ts := range m {
+		arr0 = append(arr0, fmt.Sprintf("%q: %s", c.String(), ts.GoTime().String()))
+	}
+	return strings.Join(arr0, ",")
+}
+
+func updatedEndpoints2String(m map[containerEndpoint]timestamp.MicroTS) string {
+	arr0 := make([]string, 0, len(m))
+	for ce, ts := range m {
+		arr0 = append(arr0, fmt.Sprintf("%q: %s", ce.String(), ts.GoTime().String()))
+	}
+	return strings.Join(arr0, ",")
+}
 
 func (m *networkFlowManager) startDebugServer() *http.Server {
 	handler := http.NewServeMux()

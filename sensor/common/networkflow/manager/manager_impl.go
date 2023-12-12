@@ -844,6 +844,10 @@ func (h *hostConnections) Process(networkInfo *sensor.NetworkConnectionInfo, now
 	updatedConnections := getUpdatedConnections(h.hostname, networkInfo)
 	updatedEndpoints := getUpdatedContainerEndpoints(h.hostname, networkInfo)
 
+	log.Debug("Processing host connections from Collector")
+	log.Debugf("Updated connectins: %s", updatedConnections2String(updatedConnections))
+	log.Debugf("Updated endpoints: %s", updatedEndpoints2String(updatedEndpoints))
+
 	collectorTS := timestamp.FromProtobuf(networkInfo.GetTime())
 	tsOffset := nowTimestamp - collectorTS
 
