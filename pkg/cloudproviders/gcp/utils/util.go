@@ -25,7 +25,7 @@ func CreateStorageClientFromConfig(ctx context.Context,
 
 // CreateStorageClientFromConfigWithManager creates a client based on the GCS integration configuration.
 func CreateStorageClientFromConfigWithManager(ctx context.Context,
-	conf *storage.GCSConfig, manager auth.STSClientManager,
+	conf *storage.GCSConfig, manager auth.STSTokenManager,
 ) (*googleStorage.Client, error) {
 	if conf.GetUseWorkloadId() {
 		return googleStorage.NewClient(ctx, option.WithTokenSource(manager.TokenSource()))
@@ -45,7 +45,7 @@ func CreateSecurityCenterClientFromConfig(ctx context.Context,
 
 // CreateSecurityCenterClientFromConfigWithManager creates a client based on the security center config.
 func CreateSecurityCenterClientFromConfigWithManager(ctx context.Context,
-	manager auth.STSClientManager, decCreds []byte, wifEnabled bool,
+	manager auth.STSTokenManager, decCreds []byte, wifEnabled bool,
 ) (*securitycenter.Client, error) {
 	if wifEnabled {
 		return securitycenter.NewClient(ctx, option.WithTokenSource(manager.TokenSource()))
@@ -73,7 +73,7 @@ func CreateRegistryClientFromConfig(ctx context.Context,
 
 // CreateRegistryClientFromConfigWithManager creates a client based on the image integration config.
 func CreateRegistryClientFromConfigWithManager(ctx context.Context,
-	manager auth.STSClientManager, decCreds []byte, wifEnabled bool,
+	manager auth.STSTokenManager, decCreds []byte, wifEnabled bool,
 ) (*registry.Client, error) {
 	if wifEnabled {
 		return registry.NewClient(manager.TokenSource())

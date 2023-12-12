@@ -11,24 +11,24 @@ import (
 
 const updateTimeout = 1 * time.Hour
 
-type stsClientManagerImpl struct {
+type stsTokenManagerImpl struct {
 	credManager CredentialsManager
 	tokenSource *tokensource.ReuseTokenSourceWithExpiry
 }
 
-var _ STSClientManager = &stsClientManagerImpl{}
+var _ STSTokenManager = &stsTokenManagerImpl{}
 
-func fallbackSTSClientManager() STSClientManager {
+func fallbackSTSClientManager() STSTokenManager {
 	credManager := &defaultCredentialsManager{}
-	mgr := &stsClientManagerImpl{
+	mgr := &stsTokenManagerImpl{
 		credManager: credManager,
 		tokenSource: tokensource.NewReuseTokenSourceWithExpiry(&CredentialManagerTokenSource{credManager}),
 	}
 	return mgr
 }
 
-// NewSTSClientManager creates a new GCP client manager.
-func NewSTSClientManager(namespace string, secretName string) STSClientManager {
+// NewSTSTokenManager creates a new GCP token manager.
+func NewSTSTokenManager(namespace string, secretName string) STSTokenManager {
 	restCfg, err := k8sutil.GetK8sInClusterConfig()
 	if err != nil {
 		log.Error("Could not create GCP credentials manager. Continuing with default credentials chain: ", err)
@@ -39,24 +39,24 @@ func NewSTSClientManager(namespace string, secretName string) STSClientManager {
 		log.Error("Could not create GCP credentials manager. Continuing with default credentials chain: ", err)
 		return fallbackSTSClientManager()
 	}
-	mgr := &stsClientManagerImpl{}
+	mgr := &stsTokenManagerImpl{}
 	mgr.credManager = newCredentialsManagerImpl(k8sClient, namespace, secretName, mgr.expireToken)
 	mgr.tokenSource = tokensource.NewReuseTokenSourceWithExpiry(&CredentialManagerTokenSource{mgr.credManager})
 	return mgr
 }
 
-func (c *stsClientManagerImpl) Start() {
+func (c *stsTokenManagerImpl) Start() {
 	c.credManager.Start()
 }
 
-func (c *stsClientManagerImpl) Stop() {
+func (c *stsTokenManagerImpl) Stop() {
 	c.credManager.Stop()
 }
 
-func (c *stsClientManagerImpl) TokenSource() oauth2.TokenSource {
+func (c *stsTokenManagerImpl) TokenSource() oauth2.TokenSource {
 	return c.tokenSource
 }
 
-func (c *stsClientManagerImpl) expireToken() {
+func (c *stsTokenManagerImpl) expireToken() {
 	c.tokenSource.Expire()
 }

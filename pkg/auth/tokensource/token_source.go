@@ -17,6 +17,7 @@ type ReuseTokenSourceWithExpiry struct {
 
 var _ oauth2.TokenSource = &ReuseTokenSourceWithExpiry{}
 
+// NewReuseTokenSourceWithExpiry wraps a base token source and provides refresh and expiry functionality.
 func NewReuseTokenSourceWithExpiry(base oauth2.TokenSource) *ReuseTokenSourceWithExpiry {
 	return &ReuseTokenSourceWithExpiry{base: base}
 }

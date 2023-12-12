@@ -15,7 +15,7 @@ func TestClientManager(t *testing.T) {
 	mockCredManager := authMocks.NewMockCredentialsManager(controller)
 	mockCredManager.EXPECT().GetCredentials(gomock.Any()).Return(nil, nil)
 
-	manager := &stsClientManagerImpl{
+	manager := &stsTokenManagerImpl{
 		credManager: mockCredManager,
 	}
 	manager.expireToken()
