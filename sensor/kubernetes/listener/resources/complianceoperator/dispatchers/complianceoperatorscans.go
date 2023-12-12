@@ -44,14 +44,18 @@ func (c *ScanDispatcher) ProcessEvent(obj, _ interface{}, action central.Resourc
 	// of time.  However, we should not need to send the same profile twice, the pipeline can convert the V2 sensor message
 	// so V1 and V2 objects can both be stored.
 	if features.ComplianceEnhancements.Enabled() {
+		log.Infof("SHREWS -- the object %v", complianceScan)
 		startTime, err := types.TimestampProto(complianceScan.CreationTimestamp.Time)
 		if err != nil {
 			log.Warnf("unable to convert start time %v", err)
 		}
 
-		endTime, err := types.TimestampProto(complianceScan.Status.EndTimestamp.Time)
-		if err != nil {
-			log.Warnf("unable to convert end time %v", err)
+		var endTime *types.Timestamp
+		if complianceScan.Status.EndTimestamp != nil {
+			endTime, err = types.TimestampProto(complianceScan.Status.EndTimestamp.Time)
+			if err != nil {
+				log.Warnf("unable to convert end time %v", err)
+			}
 		}
 
 		protoStatus := &central.ComplianceOperatorScanStatusV2{
