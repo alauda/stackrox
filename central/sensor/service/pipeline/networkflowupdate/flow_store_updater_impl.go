@@ -40,8 +40,14 @@ func (s *flowPersisterImpl) update(ctx context.Context, newFlows []*storage.Netw
 
 	// Sensor may have forwarded unknown NetworkEntities that we want to learn
 	for _, newFlow := range newFlows {
-		s.learnExternalEntity(ctx, newFlow.GetProps().DstEntity)
-		s.learnExternalEntity(ctx, newFlow.GetProps().SrcEntity)
+		err := s.learnExternalEntity(ctx, newFlow.GetProps().DstEntity)
+		if err != nil {
+			return err
+		}
+		err = s.learnExternalEntity(ctx, newFlow.GetProps().SrcEntity)
+		if err != nil {
+			return err
+		}
 	}
 
 	return s.flowStore.UpsertFlows(ctx, convertToFlows(flowsByIndicator), now)
@@ -105,14 +111,15 @@ func convertTS(ts timestamp.MicroTS) *types.Timestamp {
 	return ts.GogoProtobuf()
 }
 
-func (s *flowPersisterImpl) learnExternalEntity(ctx context.Context, entityInfo *storage.NetworkEntityInfo) {
+func (s *flowPersisterImpl) learnExternalEntity(ctx context.Context, entityInfo *storage.NetworkEntityInfo) error {
 	if !entityInfo.GetExternalSource().GetLearned() {
-		return
+		return nil
 	}
+
 	entity := &storage.NetworkEntity{
 		Info: entityInfo,
 		// Scope.ClusterId defaults to "", which is the default cluster
 	}
 
-	entityDataStore.Singleton().UpdateExternalNetworkEntity(ctx, entity, true)
+	return entityDataStore.Singleton().UpdateExternalNetworkEntity(ctx, entity, true)
 }
