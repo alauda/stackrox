@@ -51,11 +51,10 @@ func TestClient(t *testing.T) {
 type ClientTestSuite struct {
 	suite.Suite
 
-	clientCertDir         string
-	mockCtrl              *gomock.Controller
-	trustInfoExample      string
-	signatureExample      string
-	exampleChallengeToken string
+	clientCertDir    string
+	mockCtrl         *gomock.Controller
+	trustInfoExample string
+	signatureExample string
 }
 
 func (t *ClientTestSuite) SetupSuite() {
