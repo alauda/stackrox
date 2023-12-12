@@ -315,7 +315,14 @@ splunk:
         def expectedGroups = [VALID_DEFAULT_GROUP, VALID_DECLARATIVE_GROUP]
         def groupsResponse = GroupService.getGroups(
                 GroupServiceOuterClass.GetGroupsRequest.newBuilder().setAuthProviderId(authProvider.getId()).build())
-        assert expectedGroups == groupsResponse.getGroupsList()
+
+        verifyAll(groupsResponse.getGroupsList()) {
+            it*.props.key == expectedGroups*.props.key
+            it*.props.value == expectedGroups*.props.key
+            it*.props.traits.origin == expectedGroups*.props.traits.origin
+            it.every {it.props.authProviderId != authProvider.id }
+        }
+
 
         def notifier = verifyDeclarativeNotifier(VALID_NOTIFIER)
         assert notifier
