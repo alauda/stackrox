@@ -9,6 +9,15 @@ import (
 	"github.com/stackrox/rox/pkg/timestamp"
 )
 
+func knownConnections2String(m map[connection]*connStatus) string {
+	arr0 := make([]string, 0, len(m))
+	for c, cs := range m {
+		jsn, _ := cs.MarshalJSON()
+		arr0 = append(arr0, fmt.Sprintf("%q: %s", c.String(), string(jsn)))
+	}
+	return strings.Join(arr0, ",")
+}
+
 func updatedConnections2String(m map[connection]timestamp.MicroTS) string {
 	arr0 := make([]string, 0, len(m))
 	for c, ts := range m {
@@ -41,7 +50,6 @@ func (m *networkFlowManager) startDebugServer() *http.Server {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 	})
 	srv := &http.Server{Addr: "127.0.0.1:6067", Handler: handler}
 	go func() {

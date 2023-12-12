@@ -17,7 +17,6 @@ func (e *Store) startDebugServer() *http.Server {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 	})
 	handler.HandleFunc("/debug/ips", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -26,7 +25,6 @@ func (e *Store) startDebugServer() *http.Server {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 	})
 	handler.HandleFunc("/debug/past/endpoints", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -35,7 +33,6 @@ func (e *Store) startDebugServer() *http.Server {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 	})
 	handler.HandleFunc("/debug/past/ips", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -44,7 +41,6 @@ func (e *Store) startDebugServer() *http.Server {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 	})
 	srv := &http.Server{Addr: "127.0.0.1:6066", Handler: handler}
 	go func() {
