@@ -33,16 +33,18 @@ type Entity struct {
 
 	// TODO this does not belong here
 	ExternalEntityAddress net.IPNetwork
+	Learned               bool
 }
 
 // ToProto converts the Entity struct to a storage.NetworkEntityInfo proto.
 func (e Entity) ToProto() *storage.NetworkEntityInfo {
-	if e.Type == storage.NetworkEntityInfo_EXTERNAL_SOURCE {
+	if e.Learned && e.Type == storage.NetworkEntityInfo_EXTERNAL_SOURCE {
 		return &storage.NetworkEntityInfo{
 			Type: e.Type,
 			Id:   e.ID,
 			Desc: &storage.NetworkEntityInfo_ExternalSource_{
 				ExternalSource: &storage.NetworkEntityInfo_ExternalSource{
+					Name:    e.ExternalEntityAddress.IP().String(),
 					Default: false,
 					Learned: true,
 					Source: &storage.NetworkEntityInfo_ExternalSource_Cidr{
@@ -64,8 +66,9 @@ func EntityFromProto(protoEnt *storage.NetworkEntityInfo) Entity {
 		return LearnedExternalEntity(net.IPNetworkFromCIDR(protoEnt.GetExternalSource().GetCidr()))
 	}
 	return Entity{
-		Type: protoEnt.GetType(),
-		ID:   protoEnt.GetId(),
+		Type:    protoEnt.GetType(),
+		ID:      protoEnt.GetId(),
+		Learned: false,
 	}
 }
 
@@ -93,6 +96,7 @@ func LearnedExternalEntity(address net.IPNetwork) Entity {
 		Type:                  storage.NetworkEntityInfo_EXTERNAL_SOURCE,
 		ID:                    id.String(),
 		ExternalEntityAddress: address,
+		Learned:               true,
 	}
 }
 
