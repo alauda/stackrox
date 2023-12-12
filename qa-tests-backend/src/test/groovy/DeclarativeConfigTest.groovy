@@ -316,13 +316,13 @@ splunk:
         def groupsResponse = GroupService.getGroups(
                 GroupServiceOuterClass.GetGroupsRequest.newBuilder().setAuthProviderId(authProvider.getId()).build())
 
-        verifyAll(groupsResponse.getGroupsList()) {
-            it*.props.key == expectedGroups*.props.key
-            it*.props.value == expectedGroups*.props.key
-            it*.props.traits.origin == expectedGroups*.props.traits.origin
-            it.every {it.props.authProviderId != authProvider.id }
+        def expectedProperties = expectedGroups.props
+        verifyAll(groupsResponse.getGroupsList().props) {
+            it.key == expectedProperties.key
+            it.value == expectedProperties.value
+            it.traits.origin == expectedProperties.traits.origin
+            it.authProviderId.every { it == authProvider.id }
         }
-
 
         def notifier = verifyDeclarativeNotifier(VALID_NOTIFIER)
         assert notifier
