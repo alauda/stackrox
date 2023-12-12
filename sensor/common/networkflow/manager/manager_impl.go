@@ -203,12 +203,12 @@ func NewManager(
 	policyDetector detector.Detector,
 ) Manager {
 	enricherTicker := time.NewTicker(tickerTime)
-	enricherTicker.Stop()
+	//enricherTicker.Stop()
 	mgr := &networkFlowManager{
 		done:              concurrency.NewSignal(),
 		connectionsByHost: make(map[string]*hostConnections),
 		clusterEntities:   clusterEntities,
-		sensorUpdates:     make(chan *message.ExpiringMessage),
+		sensorUpdates:     make(chan *message.ExpiringMessage, env.NetworkFlowBufferSize.IntegerSetting()),
 		publicIPs:         newPublicIPsManager(),
 		externalSrcs:      externalSrcs,
 		policyDetector:    policyDetector,
@@ -272,12 +272,12 @@ func (m *networkFlowManager) Notify(e common.SensorComponentEvent) {
 	switch e {
 	case common.SensorComponentEventCentralReachable:
 		m.resetContext()
-		m.resetLastSentState()
+		// m.resetLastSentState() // -> doing this could be a safeguard for making sure every event is fully processed by central.
 		m.centralReady.Signal()
-		m.enricherTicker.Reset(tickerTime)
+		//m.enricherTicker.Reset(tickerTime)
 	case common.SensorComponentEventOfflineMode:
 		m.centralReady.Reset()
-		m.enricherTicker.Stop()
+		//m.enricherTicker.Stop()
 	}
 }
 
@@ -300,6 +300,11 @@ func (m *networkFlowManager) sendToCentral(msg *message.ExpiringMessage) bool {
 		return false
 	case m.sensorUpdates <- msg:
 		return true
+	default:
+		// If the m.sensorUpdates queue is full, we bounce the Network Flow update.
+		// They will still be processed by the detection engine for newer entities, but
+		// sensor will not keep ordered updates indefinitely in memory.
+		return false
 	}
 }
 
@@ -332,10 +337,10 @@ func (m *networkFlowManager) enrichConnections(tickerC <-chan time.Time) {
 		case <-m.done.WaitC():
 			return
 		case <-tickerC:
-			if !m.centralReady.IsDone() {
-				log.Info("Sensor is in offline mode: skipping enriching until connection is back up")
-				continue
-			}
+			//if !m.centralReady.IsDone() {
+			//	log.Info("Sensor is in offline mode: skipping enriching until connection is back up")
+			//	continue
+			//}
 			m.enrichAndSend()
 
 			if env.ProcessesListeningOnPort.BooleanSetting() {
@@ -369,7 +374,7 @@ func (m *networkFlowManager) enrichAndSend() {
 	}
 
 	// Before sending, run the flows through policies asynchronously
-	func() {
+	go func() {
 		m.ctxMutex.Lock()
 		defer m.ctxMutex.Unlock()
 		for _, flow := range updatedConns {
@@ -387,6 +392,7 @@ func (m *networkFlowManager) enrichAndSend() {
 		metrics.IncrementTotalNetworkFlowsSentCounter(len(protoToSend.Updated))
 		metrics.IncrementTotalNetworkEndpointsSentCounter(len(protoToSend.UpdatedEndpoints))
 	}
+	metrics.SetNetworkFlowBufferSizeGauge(len(m.sensorUpdates))
 }
 
 func (m *networkFlowManager) enrichAndSendProcesses() {
