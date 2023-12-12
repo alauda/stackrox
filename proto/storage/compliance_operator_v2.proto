@@ -144,10 +144,10 @@ message ComplianceOperatorCheckResultV2 {
 message ScanStatus {
     string          phase    = 1;
     string          result   = 2;
-    repeated string warnings = 3;
+    string          warnings = 3;
 }
 
-// Next Tag: 15
+// Next Tag: 16
 // Scan object per cluster
 message ComplianceOperatorScanV2 {
     string                     id                 = 1 [(gogoproto.moretags) = 'sql:"pk"'];
@@ -155,8 +155,9 @@ message ComplianceOperatorScanV2 {
     string                     scan_name          = 14;
     string                     cluster_id         = 3 [(gogoproto.moretags) = 'search:"Cluster ID,hidden,store" sql:"fk(Cluster:id),no-fk-constraint,type(uuid),index=category:unique;name:scan_unique_indicator"'];
     string                     cluster_name       = 13;
-    repeated string            errors             = 4;
-    repeated ProfileShim       profile            = 5;
+    string                     errors             = 4;
+    string                     warnings           = 15;
+    ProfileShim                profile            = 5;
     map<string, string>        labels             = 6;
     map<string, string>        annotations        = 7;
     ScanType                   scan_type          = 8;

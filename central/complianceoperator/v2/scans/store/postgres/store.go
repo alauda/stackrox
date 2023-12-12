@@ -93,36 +93,12 @@ func insertIntoComplianceOperatorScanV2(batch *pgx.Batch, obj *storage.Complianc
 		obj.GetId(),
 		obj.GetScanConfigName(),
 		pgutils.NilOrUUID(obj.GetClusterId()),
+		obj.GetProfile().GetProfileId(),
 		pgutils.NilOrTime(obj.GetLastExecutedTime()),
 		serialized,
 	}
 
-	finalStr := "INSERT INTO compliance_operator_scan_v2 (Id, ScanConfigName, ClusterId, LastExecutedTime, serialized) VALUES($1, $2, $3, $4, $5) ON CONFLICT(Id) DO UPDATE SET Id = EXCLUDED.Id, ScanConfigName = EXCLUDED.ScanConfigName, ClusterId = EXCLUDED.ClusterId, LastExecutedTime = EXCLUDED.LastExecutedTime, serialized = EXCLUDED.serialized"
-	batch.Queue(finalStr, values...)
-
-	var query string
-
-	for childIndex, child := range obj.GetProfile() {
-		if err := insertIntoComplianceOperatorScanV2Profiles(batch, child, obj.GetId(), childIndex); err != nil {
-			return err
-		}
-	}
-
-	query = "delete from compliance_operator_scan_v2_profiles where compliance_operator_scan_v2_Id = $1 AND idx >= $2"
-	batch.Queue(query, obj.GetId(), len(obj.GetProfile()))
-	return nil
-}
-
-func insertIntoComplianceOperatorScanV2Profiles(batch *pgx.Batch, obj *storage.ProfileShim, complianceOperatorScanV2ID string, idx int) error {
-
-	values := []interface{}{
-		// parent primary keys start
-		complianceOperatorScanV2ID,
-		idx,
-		obj.GetProfileId(),
-	}
-
-	finalStr := "INSERT INTO compliance_operator_scan_v2_profiles (compliance_operator_scan_v2_Id, idx, ProfileId) VALUES($1, $2, $3) ON CONFLICT(compliance_operator_scan_v2_Id, idx) DO UPDATE SET compliance_operator_scan_v2_Id = EXCLUDED.compliance_operator_scan_v2_Id, idx = EXCLUDED.idx, ProfileId = EXCLUDED.ProfileId"
+	finalStr := "INSERT INTO compliance_operator_scan_v2 (Id, ScanConfigName, ClusterId, Profile_ProfileId, LastExecutedTime, serialized) VALUES($1, $2, $3, $4, $5, $6) ON CONFLICT(Id) DO UPDATE SET Id = EXCLUDED.Id, ScanConfigName = EXCLUDED.ScanConfigName, ClusterId = EXCLUDED.ClusterId, Profile_ProfileId = EXCLUDED.Profile_ProfileId, LastExecutedTime = EXCLUDED.LastExecutedTime, serialized = EXCLUDED.serialized"
 	batch.Queue(finalStr, values...)
 
 	return nil
@@ -143,6 +119,7 @@ func copyFromComplianceOperatorScanV2(ctx context.Context, s pgSearch.Deleter, t
 		"id",
 		"scanconfigname",
 		"clusterid",
+		"profile_profileid",
 		"lastexecutedtime",
 		"serialized",
 	}
@@ -162,6 +139,7 @@ func copyFromComplianceOperatorScanV2(ctx context.Context, s pgSearch.Deleter, t
 			obj.GetId(),
 			obj.GetScanConfigName(),
 			pgutils.NilOrUUID(obj.GetClusterId()),
+			obj.GetProfile().GetProfileId(),
 			pgutils.NilOrTime(obj.GetLastExecutedTime()),
 			serialized,
 		})
@@ -181,55 +159,6 @@ func copyFromComplianceOperatorScanV2(ctx context.Context, s pgSearch.Deleter, t
 			deletes = deletes[:0]
 
 			if _, err := tx.CopyFrom(ctx, pgx.Identifier{"compliance_operator_scan_v2"}, copyCols, pgx.CopyFromRows(inputRows)); err != nil {
-				return err
-			}
-			// clear the input rows for the next batch
-			inputRows = inputRows[:0]
-		}
-	}
-
-	for idx, obj := range objs {
-		_ = idx // idx may or may not be used depending on how nested we are, so avoid compile-time errors.
-
-		if err := copyFromComplianceOperatorScanV2Profiles(ctx, s, tx, obj.GetId(), obj.GetProfile()...); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func copyFromComplianceOperatorScanV2Profiles(ctx context.Context, s pgSearch.Deleter, tx *postgres.Tx, complianceOperatorScanV2ID string, objs ...*storage.ProfileShim) error {
-	batchSize := pgSearch.MaxBatchSize
-	if len(objs) < batchSize {
-		batchSize = len(objs)
-	}
-	inputRows := make([][]interface{}, 0, batchSize)
-
-	copyCols := []string{
-		"compliance_operator_scan_v2_id",
-		"idx",
-		"profileid",
-	}
-
-	for idx, obj := range objs {
-		// Todo: ROX-9499 Figure out how to more cleanly template around this issue.
-		log.Debugf("This is here for now because there is an issue with pods_TerminatedInstances where the obj "+
-			"in the loop is not used as it only consists of the parent ID and the index.  Putting this here as a stop gap "+
-			"to simply use the object.  %s", obj)
-
-		inputRows = append(inputRows, []interface{}{
-			complianceOperatorScanV2ID,
-			idx,
-			obj.GetProfileId(),
-		})
-
-		// if we hit our batch size we need to push the data
-		if (idx+1)%batchSize == 0 || idx == len(objs)-1 {
-			// copy does not upsert so have to delete first.  parent deletion cascades so only need to
-			// delete for the top level parent
-
-			if _, err := tx.CopyFrom(ctx, pgx.Identifier{"compliance_operator_scan_v2_profiles"}, copyCols, pgx.CopyFromRows(inputRows)); err != nil {
 				return err
 			}
 			// clear the input rows for the next batch
@@ -257,12 +186,6 @@ func Destroy(ctx context.Context, db postgres.DB) {
 
 func dropTableComplianceOperatorScanV2(ctx context.Context, db postgres.DB) {
 	_, _ = db.Exec(ctx, "DROP TABLE IF EXISTS compliance_operator_scan_v2 CASCADE")
-	dropTableComplianceOperatorScanV2Profiles(ctx, db)
-
-}
-
-func dropTableComplianceOperatorScanV2Profiles(ctx context.Context, db postgres.DB) {
-	_, _ = db.Exec(ctx, "DROP TABLE IF EXISTS compliance_operator_scan_v2_profiles CASCADE")
 
 }
 
