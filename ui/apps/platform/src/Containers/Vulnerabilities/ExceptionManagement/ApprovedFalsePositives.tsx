@@ -116,6 +116,7 @@ function ApprovedFalsePositives() {
                         searchFilter={searchFilter}
                         setSearchFilter={setSearchFilter}
                         searchOptions={searchOptions}
+                        useRegexMatch={false}
                     />
                     <ToolbarItem variant="pagination" alignment={{ default: 'alignRight' }}>
                         <Pagination
