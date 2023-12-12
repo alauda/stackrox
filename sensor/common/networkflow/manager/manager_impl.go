@@ -846,8 +846,6 @@ func (h *hostConnections) Process(networkInfo *sensor.NetworkConnectionInfo, now
 
 	log.Debug("Processing host connections from Collector")
 	defer log.Debug("DONE Processing host connections from Collector")
-	log.Debugf("Updated connections 1: %s", updatedConnections2String(updatedConnections))
-	log.Debugf("Already known connections 1: %s", knownConnections2String(h.connections))
 	log.Debugf("Updated endpoints: %s", updatedEndpoints2String(updatedEndpoints))
 
 	collectorTS := timestamp.FromProtobuf(networkInfo.GetTime())
@@ -895,8 +893,8 @@ func (h *hostConnections) Process(networkInfo *sensor.NetworkConnectionInfo, now
 		flowMetrics.HostConnectionsAdded.Add(float64(len(h.connections) - prevSize))
 	}
 
-	log.Debugf("Updated connections 2: %s", updatedConnections2String(updatedConnections))
-	log.Debugf("Already known connections 2: %s", knownConnections2String(h.connections))
+	log.Debugf("Updated connections: %s", updatedConnections2String(updatedConnections))
+	log.Debugf("Already known connections: %s", knownConnections2String(h.connections))
 
 	{
 		prevSize := len(h.endpoints)

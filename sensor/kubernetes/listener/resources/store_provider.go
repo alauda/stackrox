@@ -37,7 +37,7 @@ type CleanableStore interface {
 func InitializeStore() *StoreProvider {
 	memSizeSetting := pastEndpointsMemorySize.IntegerSetting()
 	if memSizeSetting < 0 {
-		memSizeSetting = 2
+		memSizeSetting = 20
 	}
 	log.Infof("Initializing cluster entities store with memory of size %d", memSizeSetting)
 	deployStore := newDeploymentStore()
