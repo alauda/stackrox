@@ -75,6 +75,16 @@ function ExceptionRequestForm({
         errors,
     } = formik;
 
+    function onRemoveCVE(cve: string) {
+        formik.setValues((values) => {
+            const prevCVEs = values.cves;
+            return {
+                ...values,
+                cves: prevCVEs.filter((prevCVE) => prevCVE !== cve),
+            };
+        });
+    }
+
     return (
         <>
             <Form
@@ -127,7 +137,11 @@ function ExceptionRequestForm({
                     hidden={activeKeyTab !== 'cves'}
                     style={{ overflowY: 'auto' }}
                 >
-                    <CveSelections cves={cves} />
+                    <CveSelections
+                        cves={cves}
+                        selectedCVEIds={formik.values.cves}
+                        onRemove={onRemoveCVE}
+                    />
                 </TabContent>
                 <Flex>
                     <Button
