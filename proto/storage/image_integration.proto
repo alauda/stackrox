@@ -8,7 +8,7 @@ import "google/protobuf/timestamp.proto";
 
 package storage;
 
-// Next Tag: 23
+// Next Tag: 24
 message ImageIntegration {
     string id                                    = 1 [(gogoproto.moretags) = 'sql:"pk,type(uuid)"'];
     string name                                  = 2 [(gogoproto.moretags) = 'sql:"unique"'];
@@ -28,6 +28,7 @@ message ImageIntegration {
         ClairConfig       clair     = 14;
         ClairV4Config     clair_v4  = 22;
         IBMRegistryConfig ibm       = 20;
+        HarborConfig      harbor    = 23;
     }
     reserved 7, 12, 17; // Previously Docker Trusted Registry, Tenable, and Anchore respectively
 
@@ -85,6 +86,14 @@ message ClairifyConfig {
 }
 
 message DockerConfig {
+    string endpoint = 1 [(gogoproto.moretags) = 'scrub:"dependent" validate:"nolocalendpoint"'];
+    string username = 2 [(gogoproto.moretags) = 'scrub:"dependent"'];
+    // The password for the integration. The server will mask the value of this credential in responses and logs.
+    string password = 3 [(gogoproto.moretags) = 'scrub:"always"'];
+    bool   insecure = 4;
+}
+
+message HarborConfig {
     string endpoint = 1 [(gogoproto.moretags) = 'scrub:"dependent" validate:"nolocalendpoint"'];
     string username = 2 [(gogoproto.moretags) = 'scrub:"dependent"'];
     // The password for the integration. The server will mask the value of this credential in responses and logs.

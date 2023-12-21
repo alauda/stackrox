@@ -8,11 +8,11 @@ import (
 	dockerFactory "github.com/stackrox/rox/pkg/registries/docker"
 	ecrFactory "github.com/stackrox/rox/pkg/registries/ecr"
 	googleFactory "github.com/stackrox/rox/pkg/registries/google"
+	harborFactory "github.com/stackrox/rox/pkg/registries/harbor"
 	ibmFactory "github.com/stackrox/rox/pkg/registries/ibm"
 	nexusFactory "github.com/stackrox/rox/pkg/registries/nexus"
 	quayFactory "github.com/stackrox/rox/pkg/registries/quay"
 	rhelFactory "github.com/stackrox/rox/pkg/registries/rhel"
-
 	"github.com/stackrox/rox/pkg/registries/types"
 )
 
@@ -39,6 +39,7 @@ var AllCreatorFuncs = []CreatorWrapper{
 	azureFactory.Creator,
 	rhelFactory.Creator,
 	ibmFactory.Creator,
+	harborFactory.Creator,
 }
 
 // AllCreatorFuncsWithoutRepoList defines all known registry creators with repo list disabled.
@@ -53,6 +54,7 @@ var AllCreatorFuncsWithoutRepoList = []CreatorWrapper{
 	azureFactory.CreatorWithoutRepoList,
 	rhelFactory.CreatorWithoutRepoList,
 	ibmFactory.CreatorWithoutRepoList,
+	harborFactory.CreatorWithoutRepoList,
 }
 
 // NewFactory creates a new registries factory.
