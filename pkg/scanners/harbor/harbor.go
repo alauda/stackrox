@@ -85,6 +85,26 @@ func getPingEndpoint(host string) string {
 	return fmt.Sprintf("%s/api/v2.0/ping", host)
 }
 
+func getRegistryScheme(registryURL string) (string, error) {
+	resp, err := http.Get("http://" + registryURL)
+	if err != nil {
+		resp, err = http.Get("https://" + registryURL)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		if resp.Request.URL.Scheme == "https" {
+			return "https", nil
+		} else {
+			return "http", nil
+		}
+	}
+	return "", fmt.Errorf("Unable to determine Registry protocol")
+}
+
 func newScanner(integration *storage.ImageIntegration) (*harborScanner, error) {
 	cfg := integration.GetHarbor()
 	if err := validate(cfg); err != nil {
@@ -94,7 +114,11 @@ func newScanner(integration *storage.ImageIntegration) (*harborScanner, error) {
 	url := urlfmt.FormatURL(cfg.GetEndpoint(), urlfmt.HTTPS, urlfmt.NoTrailingSlash)
 	server := urlfmt.GetServerFromURL(url)
 
-	scheme := urlfmt.GetSchemeFromURL(url)
+	// scheme := urlfmt.GetSchemeFromURL(url)
+	scheme, err := getRegistryScheme(cfg.GetEndpoint())
+	if err != nil {
+		return nil, err
+	}
 	defaultScheme := urlfmt.HTTPS
 	if scheme == "http" {
 		defaultScheme = urlfmt.InsecureHTTP

@@ -15,9 +15,9 @@ func TestHarbor(t *testing.T) {
 	integration := &storage.ImageIntegration{
 		IntegrationConfig: &storage.ImageIntegration_Harbor{
 			Harbor: &storage.HarborConfig{
-				Endpoint: "192-168-176-24-harbor.alauda.cn",
+				Endpoint: "192.168.135.88:32600",
 				Username: "admin",
-				Password: "xxx",
+				Password: "07Apples@",
 				// Insecure: true,
 			},
 		},
@@ -32,7 +32,7 @@ func TestHarbor(t *testing.T) {
 	require.NoError(t, err)
 
 	var images = []string{
-		"192-168-176-24-harbor.alauda.cn/public/alpine:3.16.2",
+		"192.168.135.88:32600/public/3.14.7",
 	}
 
 	for _, i := range images {
@@ -47,7 +47,6 @@ func TestHarbor(t *testing.T) {
 
 		scan, err := scanner.GetScan(img)
 		require.NoError(t, err)
-		// t.Logf("scan: %+v", scan.GetComponents())
 
 		require.NotEmpty(t, scan.GetComponents())
 		for _, c := range scan.GetComponents() {
