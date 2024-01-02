@@ -2,9 +2,12 @@ package urlfmt
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/cloudflare/cfssl/log"
 	"github.com/pkg/errors"
 )
 
@@ -98,4 +101,30 @@ func GetSchemeFromURL(endpoint string) string {
 func TrimHTTPPrefixes(url string) string {
 	url = strings.TrimPrefix(url, "http://")
 	return strings.TrimPrefix(url, "https://")
+}
+
+func GetRegistryScheme(registryURL string) (Scheme, error) {
+	resp, err := http.Get("http://" + registryURL)
+	if err != nil || resp.StatusCode != 200 {
+		resp, err = http.Get("https://" + registryURL)
+		if err != nil || resp.StatusCode != 200 {
+			return NONE, err
+		}
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		if resp.Request.URL.Scheme == "https" {
+			return HTTPS, nil
+		} else {
+			return InsecureHTTP, nil
+		}
+	} else {
+		res, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return NONE, err
+		}
+		log.Infof("GetRegistryScheme Resp: %s", string(res))
+	}
+	return NONE, fmt.Errorf("Unable to determine Registry protocol")
 }

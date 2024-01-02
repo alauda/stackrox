@@ -15,9 +15,9 @@ func TestHarbor(t *testing.T) {
 	integration := &storage.ImageIntegration{
 		IntegrationConfig: &storage.ImageIntegration_Harbor{
 			Harbor: &storage.HarborConfig{
-				Endpoint: "192.168.135.88:32600",
+				Endpoint: "192-168-176-21-harbor.alauda.cn",
 				Username: "admin",
-				Password: "07Apples@",
+				Password: "Harbor12345*",
 				// Insecure: true,
 			},
 		},
@@ -32,7 +32,7 @@ func TestHarbor(t *testing.T) {
 	require.NoError(t, err)
 
 	var images = []string{
-		"192.168.135.88:32600/public/3.14.7",
+		"192-168-176-21-harbor.alauda.cn/public/alpine:3.14.7",
 	}
 
 	for _, i := range images {

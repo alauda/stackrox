@@ -83,26 +83,6 @@ type Config struct {
 	DisableRepoList bool
 }
 
-func getRegistryScheme(registryURL string) (urlfmt.Scheme, error) {
-	resp, err := http.Get("http://" + registryURL)
-	if err != nil {
-		resp, err = http.Get("https://" + registryURL)
-		if err != nil {
-			return urlfmt.NONE, err
-		}
-	}
-
-	defer resp.Body.Close()
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		if resp.Request.URL.Scheme == "https" {
-			return urlfmt.HTTPS, nil
-		} else {
-			return urlfmt.InsecureHTTP, nil
-		}
-	}
-	return urlfmt.NONE, fmt.Errorf("Unable to determine Registry protocol")
-}
-
 // NewHarborRegistryWithConfig creates a new instantiation of the docker registry
 // TODO(cgorman) AP-386 - properly put the base docker registry into another pkg
 func NewHarborRegistryWithConfig(cfg Config, integration *storage.ImageIntegration) (*Registry, error) {
@@ -111,7 +91,7 @@ func NewHarborRegistryWithConfig(cfg Config, integration *storage.ImageIntegrati
 		endpoint = "https://registry-1.docker.io"
 	}
 
-	scheme, err := getRegistryScheme(endpoint)
+	scheme, err := urlfmt.GetRegistryScheme(endpoint)
 	if err != nil {
 		return nil, err
 	}
