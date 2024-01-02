@@ -22,6 +22,7 @@ import sumologic from 'images/sumologic.svg';
 import s3 from 'images/s3.svg';
 import syslog from 'images/syslog.svg';
 import teams from 'images/teams.svg';
+import harbor from 'images/harbor.svg';
 import { integrationsPath } from 'routePaths';
 
 /*
@@ -155,6 +156,12 @@ export const imageIntegrationsDescriptors: ImageIntegrationDescriptor[] = [
         image: redhat,
         label: 'Red Hat',
         type: 'rhel',
+    },
+    {
+        categories: 'Registry + Scanner',
+        image: harbor,
+        label: 'Harbor',
+        type: 'harbor',
     },
 ];
 

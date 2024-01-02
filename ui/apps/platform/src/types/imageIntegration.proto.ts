@@ -29,6 +29,7 @@ export type ImageIntegration =
     | IbmImageIntegration
     | NexusImageIntegration
     | QuayImageIntegration
+    | RhelImageIntegration
     | RhelImageIntegration;
 
 export type ArtifactoryImageIntegration = {
@@ -81,6 +82,20 @@ export type DockerImageIntegration = {
 } & BaseImageIntegration;
 
 export type DockerConfig = {
+    endpoint: string; // scrub: dependent
+    username: string; // scrub: dependent
+    // The password for the integration. The server will mask the value of this credential in responses and logs.
+    password: string; // scrub: always
+    insecure: boolean;
+};
+
+export type HarborImageIntegration = {
+    type: 'harbor';
+    categories: CategoriesForRegistryScanner[];
+    harbor: HarborConfig;
+} & BaseImageIntegration;
+
+export type HarborConfig = {
     endpoint: string; // scrub: dependent
     username: string; // scrub: dependent
     // The password for the integration. The server will mask the value of this credential in responses and logs.

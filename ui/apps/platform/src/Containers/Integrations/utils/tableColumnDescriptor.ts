@@ -247,6 +247,11 @@ const tableColumnDescriptor: Readonly<IntegrationTableColumnDescriptorMap> = {
             { accessor: 'docker.endpoint', Header: 'Endpoint' },
             { accessor: 'docker.username', Header: 'Username' },
         ],
+        harbor: [
+            { accessor: 'name', Header: 'Name' },
+            { accessor: 'harbor.endpoint', Header: 'Endpoint' },
+            { accessor: 'harbor.username', Header: 'Username' },
+        ],
     },
     signatureIntegrations: {
         signature: [
