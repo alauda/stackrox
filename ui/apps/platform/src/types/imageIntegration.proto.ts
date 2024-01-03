@@ -30,7 +30,7 @@ export type ImageIntegration =
     | NexusImageIntegration
     | QuayImageIntegration
     | RhelImageIntegration
-    | RhelImageIntegration;
+    | HarborImageIntegration;
 
 export type ArtifactoryImageIntegration = {
     type: 'artifactory';
